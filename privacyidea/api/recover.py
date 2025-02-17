@@ -29,7 +29,7 @@ from .lib.utils import required
 from privacyidea.lib.user import get_user_from_param
 import logging
 from privacyidea.lib.passwordreset import (create_recoverycode,
-                                           check_recoverycode)
+                                           check_recoverycode,create_sms_recoverycode)
 from privacyidea.lib.policy import ACTION
 from privacyidea.api.lib.prepolicy import prepolicy, check_anonymous_user
 
@@ -46,17 +46,27 @@ recover_blueprint = Blueprint('recover_blueprint', __name__)
 def get_recover_code():
     """
     This method requests a recover code for a user. The recover code it sent
-    via email to the user.
+    via email or sms to the user.
 
     :queryparam user: username of the user
     :queryparam realm: realm of the user
-    :queryparam email: email of the user
+    :queryparam email: email of the user (only if route is email)
+    :queryparam route: how to send the code (sms or email, default: sms)
     :return: JSON with value=True or value=False
     """
     param = request.all_data
     user_obj = get_user_from_param(param, required)
-    email = getParam(param, "email", required)
-    r = create_recoverycode(user_obj, email, base_url=request.base_url)
+    route = getParam(param,"route")
+    if not route:
+        route = "sms"
+        
+    r = False
+    
+    if route == "email":
+        email = getParam(param, "email", required)
+        r = create_recoverycode(user_obj, email, base_url=request.base_url)
+    elif route == "sms":
+        r = create_sms_recoverycode(user_obj)
     g.audit_object.log({"success": r,
                         "info": "{0!s}".format(user_obj)})
     return send_result(r)
