@@ -93,6 +93,7 @@ from privacyidea.api.lib.prepolicy import (prepolicy, set_realm,
 from privacyidea.api.lib.utils import get_all_params, get_optional_one_of
 from privacyidea.api.recover import recover_blueprint
 from privacyidea.api.register import register_blueprint
+from privacyidea.api.riskbase import riskbase_blueprint
 from privacyidea.lib.applications.offline import MachineApplication
 from privacyidea.lib.audit import getAudit
 from privacyidea.lib.challenge import get_challenges, extract_answered_challenges
@@ -121,6 +122,7 @@ from .lib.utils import send_result, getParam, get_required, get_optional
 from ..lib.decorators import (check_user_serial_or_cred_id_in_request)
 from ..lib.fido2.policy_action import FIDO2PolicyAction
 from ..lib.framework import get_app_config_value
+from datetime import datetime
 
 log = logging.getLogger(__name__)
 
@@ -130,6 +132,7 @@ validate_blueprint = Blueprint('validate_blueprint', __name__)
 @validate_blueprint.before_request
 @register_blueprint.before_request
 @recover_blueprint.before_request
+@riskbase_blueprint.before_request
 def before_request():
     """
     This is executed before the request
@@ -519,6 +522,10 @@ def check():
                         "authentication": ret.json.get("result").get("authentication") or "",
                         "serial": serials,
                         "token_type": details.get("type")})
+    
+    if user and result:
+        user.set_attribute(g.client_ip,datetime.now().strftime("%x"))
+    
     return ret
 
 
