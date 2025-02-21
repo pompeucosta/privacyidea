@@ -1,0 +1,18 @@
+body {
+    padding: 0;
+}
+
+.well2 {
+    background-color: aqua;
+    /* padding-top: 20px; */
+    width: 100vw;
+    height: calc(100vh - 100px);
+    margin-left: calc(-50vw + 50%);
+    margin-top: -40px;
+    position: relative;
+    background-image: url(https://adfs.ua.pt/adfs/portal/illustration/illustration.jpg?id=9320EBC036566DD382FF48F5A40AF95D4559E09E75256D6E192DF62D210430D2);
+}
+
+.well2 > .container {
+    padding-top: 20px;
+}
