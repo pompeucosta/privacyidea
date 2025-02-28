@@ -844,7 +844,111 @@ class CustomUserAttribute(MethodsMixin, db.Model):
         if persistent:
             db.session.commit()
         return ret
+    
+class IPRiskScore(MethodsMixin,db.Model):
+    
+    __tablename__ = "ipriskscore"
+    id = db.Column(db.Integer(), Sequence("ipriskscore_seq"), primary_key=True)
+    ip = db.Column(db.Unicode(100), nullable=False)
+    mask = db.Column(db.Integer(),default=32,nullable=False)
+    #the risk score: any negative value to block the ip (blacklist)
+    risk_score = db.Column(db.Integer(), nullable=False)
+    
+    def __init__(self,ip,risk_score,mask=32):
+        self.ip = ip
+        self.risk_score = risk_score
+        self.mask = mask if mask != None else 32
+        
+    def save(self):
+        ir = IPRiskScore.query.filter_by(ip=self.ip,mask=self.mask).first()
+        
+        if ir is None:
+            db.session.add(self)
+            db.session.commit()
+            ret = self.id
+        else:
+            IPRiskScore.query.filter_by(ip=self.ip,mask=self.mask).update({"risk_score": self.risk_score})
+            ret = ir.id
+            
+        db.session.commit()
+        return ret
+    
+class ServiceRiskScore(MethodsMixin,db.Model):
+    __tablename__ = "serviceriskscore"
+    id = db.Column(db.Interger(),Sequence("serviceriskscore_seq"),primary_key=True)
+    service_name = db.Column(db.Unicode(100),nullable=False)
+    risk_score = db.Column(db.Integer(),nullable=False)
+    
+    def __init__(self,servicename,risk_score):
+        self.service_name = servicename
+        self.risk_score = risk_score
+        
+    def save(self):
+        sr = ServiceRiskScore.query.filter_by(service_name=self.service_name).first()
+        
+        if sr is None:
+            db.session.add(self)
+            db.session.commit()
+            ret = self.id
+        else:
+            ServiceRiskScore.query.filter_by(service_name=self.service_name).update({"risk_score": self.risk_score})
+            ret = sr.id
+        
+        db.session.commit()
+        return ret
 
+class UserTypeRiskScore(MethodsMixin,db.Model):
+    __tablename__ = "usertyperiskscore"
+    id = db.Column(db.Integer(),Sequence("usertyperiskscore_seq"),primary_key=True)
+    user_type = db.Column(db.Unicode(100),nullable=False)
+    risk_score = db.Column(db.Integer(),nullable=False)
+    
+    def __init__(self,user_type,risk_score):
+        self.user_type = user_type
+        self.risk_score = risk_score
+        
+    def save(self):
+        ur = UserTypeRiskScore.query.filter_by(user_type=self.user_type).first()
+        
+        if ur is None:
+            db.session.add(self)
+            db.session.commit()
+            ret = self.id
+        else:
+            UserTypeRiskScore.query.filter_by(user_type=self.user_type).update({"risk_score":self.risk_score})
+            ret = ur.id
+            
+        db.session.commit()
+        return ret
+    
+class UserRiskScore(MethodsMixin,db.Model):
+    __tablename__ = "userriskscore"
+    id = db.Column(db.Integer(), Sequence("userriskscore_seq"),primary_key=True)
+    user_id = db.Column(db.Unicode(320), default='', index=True)
+    resolver = db.Column(db.Unicode(120), default='', index=True)
+    realm_id = db.Column(db.Integer(), db.ForeignKey('realm.id'))
+    risk_score = db.Column(db.Integer(),nullable=False)
+    
+    def __init__(self,user_id,resolver,realm_id,risk_score):
+        self.user_id = user_id
+        self.resolver = resolver
+        self.realm_id = realm_id
+        self.risk_score = risk_score
+        
+    def save(self):
+        ur = UserRiskScore.query.filter_by(user_id=self.user_id,resolver=self.resolver,
+                                      realm_id=self.realm_id).first()
+        if ur is None:
+            db.session.add(self)
+            db.session.commit()
+            ret = self.id
+        else:
+            UserRiskScore.query.filter_by(user_id=self.user_id,resolver=self.resolver,
+                                      realm_id=self.realm_id).update({"risk_score":self.risk_score})
+            ret = ur.id
+        
+        db.session.commit()
+        return ret
 
 class Admin(db.Model):
     """
