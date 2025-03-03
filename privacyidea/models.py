@@ -55,7 +55,7 @@ from .lib.log import log_with
 from privacyidea.lib.utils import (is_true, convert_column_to_unicode,
                                    hexlify_and_unicode)
 from privacyidea.lib.framework import get_app_config_value
-from privacyidea.lib.error import DatabaseError
+from privacyidea.lib.error import DatabaseError, ParameterError
 
 log = logging.getLogger(__name__)
 
@@ -846,9 +846,14 @@ class CustomUserAttribute(MethodsMixin, db.Model):
         return ret
     
 class IPRiskScore(MethodsMixin,db.Model):
+    PRIVATE = 0
+    PUBLIC = 1
     
     __tablename__ = "ipriskscore"
     id = db.Column(db.Integer(), Sequence("ipriskscore_seq"), primary_key=True)
+    ip_version = db.Column(db.Integer(),default=4,nullable=False)
+    #the type of ip (private or public)
+    ip_type = db.Column(db.Integer(),default=PRIVATE,nullable=False)
     ip = db.Column(db.Unicode(100), nullable=False)
     mask = db.Column(db.Integer(),default=32,nullable=False)
     #the risk score: any negative value to block the ip (blacklist)
@@ -858,6 +863,22 @@ class IPRiskScore(MethodsMixin,db.Model):
         self.ip = ip
         self.risk_score = risk_score
         self.mask = mask if mask != None else 32
+        self.ip_version,self.ip_type = self.get_ip_version_and_type(ip,self.mask)
+        if self.ip_version == 0:
+            raise ParameterError("invalid ip")
+        
+    def get_ip_version_and_type(ip,mask):
+        import ipaddress
+        subnet = "{0!s}{1!s}".format(ip,f"/{mask}")
+        try:
+            addr = ipaddress.IPv4Network(subnet)
+            return (4,addr.is_global)
+        except:    
+            try:
+                addr = ipaddress.IPv6Network(subnet)
+                return (6,addr.is_global)
+            except:
+                return (0, None)
         
     def save(self):
         ir = IPRiskScore.query.filter_by(ip=self.ip,mask=self.mask).first()
@@ -875,7 +896,7 @@ class IPRiskScore(MethodsMixin,db.Model):
     
 class ServiceRiskScore(MethodsMixin,db.Model):
     __tablename__ = "serviceriskscore"
-    id = db.Column(db.Interger(),Sequence("serviceriskscore_seq"),primary_key=True)
+    id = db.Column(db.Integer(),Sequence("serviceriskscore_seq"),primary_key=True)
     service_name = db.Column(db.Unicode(100),nullable=False)
     risk_score = db.Column(db.Integer(),nullable=False)
     
@@ -921,34 +942,34 @@ class UserTypeRiskScore(MethodsMixin,db.Model):
         db.session.commit()
         return ret
     
-class UserRiskScore(MethodsMixin,db.Model):
-    __tablename__ = "userriskscore"
-    id = db.Column(db.Integer(), Sequence("userriskscore_seq"),primary_key=True)
-    user_id = db.Column(db.Unicode(320), default='', index=True)
-    resolver = db.Column(db.Unicode(120), default='', index=True)
-    realm_id = db.Column(db.Integer(), db.ForeignKey('realm.id'))
-    risk_score = db.Column(db.Integer(),nullable=False)
+# class UserRiskScore(MethodsMixin,db.Model):
+#     __tablename__ = "userriskscore"
+#     id = db.Column(db.Integer(), Sequence("userriskscore_seq"),primary_key=True)
+#     user_id = db.Column(db.Unicode(320), default='', index=True)
+#     resolver = db.Column(db.Unicode(120), default='', index=True)
+#     realm_id = db.Column(db.Integer(), db.ForeignKey('realm.id'))
+#     risk_score = db.Column(db.Integer(),nullable=False)
     
-    def __init__(self,user_id,resolver,realm_id,risk_score):
-        self.user_id = user_id
-        self.resolver = resolver
-        self.realm_id = realm_id
-        self.risk_score = risk_score
+#     def __init__(self,user_id,resolver,realm_id,risk_score):
+#         self.user_id = user_id
+#         self.resolver = resolver
+#         self.realm_id = realm_id
+#         self.risk_score = risk_score
         
-    def save(self):
-        ur = UserRiskScore.query.filter_by(user_id=self.user_id,resolver=self.resolver,
-                                      realm_id=self.realm_id).first()
-        if ur is None:
-            db.session.add(self)
-            db.session.commit()
-            ret = self.id
-        else:
-            UserRiskScore.query.filter_by(user_id=self.user_id,resolver=self.resolver,
-                                      realm_id=self.realm_id).update({"risk_score":self.risk_score})
-            ret = ur.id
+#     def save(self):
+#         ur = UserRiskScore.query.filter_by(user_id=self.user_id,resolver=self.resolver,
+#                                       realm_id=self.realm_id).first()
+#         if ur is None:
+#             db.session.add(self)
+#             db.session.commit()
+#             ret = self.id
+#         else:
+#             UserRiskScore.query.filter_by(user_id=self.user_id,resolver=self.resolver,
+#                                       realm_id=self.realm_id).update({"risk_score":self.risk_score})
+#             ret = ur.id
         
-        db.session.commit()
-        return ret
+#         db.session.commit()
+#         return ret
 
 class Admin(db.Model):
     """
