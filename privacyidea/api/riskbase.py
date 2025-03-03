@@ -1,6 +1,7 @@
 from flask import (Blueprint, request,g)
 import logging
 
+from privacyidea.api.auth import admin_required
 from privacyidea.lib.error import ParameterError
 from privacyidea.lib.log import log_with
 from privacyidea.api.lib.utils import required,optional,send_result,getParam
@@ -17,28 +18,46 @@ riskbase_blueprint = Blueprint('riskbase_blueprint', __name__)
 @riskbase_blueprint.route('', methods=['POST'])
 def check_risk():
     """
-    This method checks if a user requires two factor authentication or not (risk based authn)
+    Checks if a user requires two factor authentication or not (risk based authn)
     
     :queryparam user: username of the user
-    :return: JSON with value=True or value=False
+    :queryparam realm: the realm of the user
+    :queryparam ip: ip of the request
+    :queryparam servicename: name of the service the user is trying to access
+    :return: JSON with value=True if MFA is required or value=False otherwise
     """
-    NOW = datetime.now()
-    MAX_TIMESPAN = NOW - relativedelta(days=30)
+    
     param = request.all_data
-    user_obj = get_user_from_param(param,required)
-    user_ip = g.client_ip
+    user_obj: User = get_user_from_param(param,required)
+    ip = getParam(param,"ip",optional,allow_empty=False)
+    service = getParam(param,"servicename",optional,allow_empty=False)
+    
+    #TODO: use the default risk score
+    service_risk_score = -1
+    ip_risk_score = -1
+    
+    if ip != None:
+        ip_risk_score = _get_ip_risk_score(ip)
+        
+    if service != None:
+        service_risk_score = _get_service_risk_score(service)
+        
+    user_risk_score = _get_user_risk_score(user_obj)
+    
+    #check if any of the risk scores are "blocked"
+    if ip_risk_score == -1 or service_risk_score == -1 or user_risk_score == -1:
+        return send_result(True)
+    
+    THRESHOLD = 10
     
     r = True
-    ip_last_used_date = user_obj.attributes.get(user_ip,None)
-
-    if ip_last_used_date:
-        date = datetime.strptime(ip_last_used_date,"%x")
-        r = MAX_TIMESPAN > date
-    
+    if user_risk_score + service_risk_score + ip_risk_score < THRESHOLD:
+        r = False
+        
     return send_result(r)
 
 @riskbase_blueprint.route("/userrisk",methods=["POST"])
-#TODO: admin required
+@admin_required
 def set_user_risk():
     """
     Set the risk score for a specific user
@@ -54,15 +73,15 @@ def set_user_risk():
     risk_score = getParam(param,"riskscore",required,allow_empty=False)
     
     risk_score = sanitize_risk_score(risk_score)
-        
-    r = user_obj.set_risk_score(risk_score)
+    
+    r = user_obj.set_attribute("risk_score",risk_score)
     g.audit_object.log({"success": True,
                         "info": "{0!s}: {1!s}".format(user_obj,risk_score)})
     
     return send_result(r)
 
 @riskbase_blueprint.route("/servicerisk",methods=["POST"])
-#TODO: admin required
+@admin_required
 def set_service_risk():
     """
     Set the risk score for a specific service
@@ -84,7 +103,7 @@ def set_service_risk():
     return send_result(r)
 
 @riskbase_blueprint.route("/usertyperisk",methods=["POST"])
-#TODO: admin required
+@admin_required
 def set_user_type_risk():
     """
     Set the risk score for a specific type of user
@@ -106,8 +125,8 @@ def set_user_type_risk():
     
     return send_result(r)
 
-@riskbase_blueprint("/iprisk",methods=["POST"])
-#TODO: admin required
+@riskbase_blueprint.route("/iprisk",methods=["POST"])
+@admin_required
 def set_ip_risk():
     """
     Set the risk score for an IP or subnet
@@ -122,7 +141,7 @@ def set_ip_risk():
     mask = getParam(param,"mask",optional)
     risk_score = getParam(param,"riskscore",required,allow_empty=False)
     
-    if (version := ip_version(ip,mask)) != 0:
+    if (version := ip_version(ip)) != 0:
         raise ParameterError("Invalid {0!s}".format("IP address" if mask is None else "subnet"))
     
     risk_score = sanitize_risk_score(risk_score)
@@ -134,7 +153,48 @@ def set_ip_risk():
     
     return send_result(r)
     
+def _get_ip_risk_score(ip):
+    addr = ipaddress.ip_address(ip)
+    version = ip_version(ip)
+    ip_type = IPRiskScore.PUBLIC if addr.is_global else IPRiskScore.PRIVATE
+    subnets = IPRiskScore.query.filter_by(ip_version=version,ip_type=ip_type).all()
+
+    #TODO: use the default ip risk score if the query is empty
     
+    #get all subnets that hold the ip
+    subnets = [create_subnet(subnet.ip,subnet.mask) for subnet in subnets]
+    subnets = [subn for subn in subnets if matches_subnet(ip,subn)]
+
+    if len(subnets) == 0:
+        #TODO: use the default ip risk score
+        pass
+    
+    subnet_highest_mask = get_subnet_with_highest_mask(subnets)
+    #fetch the risk score for the subnet
+    ip_risk_score = IPRiskScore.query.filter_by(ip=subnet_highest_mask.ip,mask=subnet_highest_mask.mask).first().risk_score
+    return ip_risk_score
+
+def _get_service_risk_score(service):
+    service_query = ServiceRiskScore.query.filter_by(service_name=service).first()
+        
+    #TODO: use the default service risk score if the query is empty
+    
+    service_risk_score = service_query.risk_score
+    return service_risk_score
+
+def _get_user_risk_score(user: User):
+    user_risk_score = user.attributes.get("risk_score",None)
+    if user_risk_score == None:
+        type_query = UserTypeRiskScore.query.filter_by(user_type=user.attributes.get("type",None)).first()
+        
+        #TODO: use the default user risk score if the query is empty
+        
+        user_risk_score = type_query.risk_score
+        
+    return user_risk_score
+       
+
+
 @log_with(log)
 def sanitize_risk_score(risk_score):
     """Sanitizes the risk score. Checks if it's a number.
@@ -157,8 +217,7 @@ def sanitize_risk_score(risk_score):
     
     return risk_score
 
-def ip_version(ip,mask=None):
-    subnet = "{0!s}{1!s}".format(ip,f"/{mask}" if mask != None else "")
+def ip_version(subnet):
     try:
         ipaddress.IPv4Network(subnet)
         return 4
