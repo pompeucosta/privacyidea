@@ -6,8 +6,6 @@ from privacyidea.lib.error import ParameterError
 from privacyidea.lib.log import log_with
 from privacyidea.api.lib.utils import required,optional,send_result,getParam
 from privacyidea.lib.user import User, get_user_from_param
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from privacyidea.models import ServiceRiskScore,UserTypeRiskScore,IPRiskScore
 import ipaddress
 
@@ -70,13 +68,18 @@ def set_user_risk():
     
     param = request.all_data
     user_obj: User = get_user_from_param(param,required)
+    
+    if not user_obj.exist():
+        log.info("user {0!s}@{1!s} does not exist".format(user_obj.login,user_obj.realm))
+        raise ParameterError("Invalid user! User {0!s} does not exist.".format(user_obj.login))
+        
     risk_score = getParam(param,"riskscore",required,allow_empty=False)
     
     risk_score = sanitize_risk_score(risk_score)
     
     r = user_obj.set_attribute("risk_score",risk_score)
     g.audit_object.log({"success": True,
-                        "info": "{0!s}: {1!s}".format(user_obj,risk_score)})
+                        "info": "{0!s}@{1!s}: {2!s}".format(user_obj.login,user_obj.realm,risk_score)})
     
     return send_result(r)
 
@@ -160,6 +163,8 @@ def _get_ip_risk_score(ip):
     subnets = IPRiskScore.query.filter_by(ip_version=version,ip_type=ip_type).all()
 
     #TODO: use the default ip risk score if the query is empty
+    if subnets == None:
+        return 0
     
     #get all subnets that hold the ip
     subnets = [create_subnet(subnet.ip,subnet.mask) for subnet in subnets]
@@ -167,7 +172,7 @@ def _get_ip_risk_score(ip):
 
     if len(subnets) == 0:
         #TODO: use the default ip risk score
-        pass
+        return 0
     
     subnet_highest_mask = get_subnet_with_highest_mask(subnets)
     #fetch the risk score for the subnet
@@ -178,6 +183,8 @@ def _get_service_risk_score(service):
     service_query = ServiceRiskScore.query.filter_by(service_name=service).first()
         
     #TODO: use the default service risk score if the query is empty
+    if service_query == None:
+        return 0
     
     service_risk_score = service_query.risk_score
     return service_risk_score
@@ -185,9 +192,11 @@ def _get_service_risk_score(service):
 def _get_user_risk_score(user: User):
     user_risk_score = user.attributes.get("risk_score",None)
     if user_risk_score == None:
-        type_query = UserTypeRiskScore.query.filter_by(user_type=user.attributes.get("type",None)).first()
+        type_query = UserTypeRiskScore.query.filter_by(user_type=user.info.get("type",None)).first()
         
         #TODO: use the default user risk score if the query is empty
+        if type_query == None:
+            return 0
         
         user_risk_score = type_query.risk_score
         
@@ -208,7 +217,9 @@ def sanitize_risk_score(risk_score):
     Returns:
         float: the sanitized risk score. if risk_score is less than 0 then return -1, else return risk_score.
     """
-    if not isinstance(risk_score,float):
+    try:
+        risk_score = float(risk_score)
+    except:
         log.info("invalid risk score: %s",risk_score)
         raise ParameterError("Risk score must be a number")
     

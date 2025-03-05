@@ -61,7 +61,7 @@ from .realm import (get_realms, realm_is_defined,
 from .config import get_from_config, SYSCONF
 from .framework import get_app_config_value
 from .usercache import (user_cache, cache_username, user_init, delete_user_cache)
-from privacyidea.models import CustomUserAttribute,UserRiskScore, db
+from privacyidea.models import CustomUserAttribute, db
 
 log = logging.getLogger(__name__)
 
