@@ -220,5 +220,68 @@ class APIRiskBaseTestCase(MyApiTestCase):
             self.assertTrue(float(risk_score) == float(5),risk_score)
     
     def test_03_set_ip_risk(self):
-        pass
+        ip = "192.168.1.0"
+        mask = 24
+        #test for missing admin auth
+        with self.app.test_request_context("/riskbase/iprisk",
+                                           method="POST",
+                                           data={"ip": ip,
+                                                 "mask": mask,
+                                                 "riskscore": 5}):
+            res = self.app.full_dispatch_request()
+            self.assertTrue(res.status_code == 401,res)
+            
+        #test for missing ip
+        with self.app.test_request_context("/riskbase/iprisk",
+                                           method="POST",
+                                           data={"mask": mask,
+                                                 "riskscore": 5},
+                                           headers={"Authorization": self.at}):
+            res = self.app.full_dispatch_request()
+            self.assertTrue(res.status_code == 400,res)
+            
+        #test for missing risk score
+        with self.app.test_request_context("/riskbase/iprisk",
+                                           method="POST",
+                                           data={"ip": ip,
+                                                 "mask": mask},
+                                           headers={"Authorization": self.at}):
+            res = self.app.full_dispatch_request()
+            self.assertTrue(res.status_code == 400,res)
+            
+        invalid_ip = "999.999.999.0"
+        #test for invalid ip
+        with self.app.test_request_context("/riskbase/iprisk",
+                                           method="POST",
+                                           data={"ip": invalid_ip,
+                                                 "mask": mask,
+                                                 "riskscore": 5},
+                                           headers={"Authorization": self.at}):
+            res = self.app.full_dispatch_request()
+            self.assertTrue(res.status_code == 400,res)
+            
+        #test for valid ip with missing mask (single ip instead of subnet)
+        with self.app.test_request_context("/riskbase/iprisk",
+                                           method="POST",
+                                           data={"ip": "192.168.3.10",
+                                                 "riskscore": 15},
+                                           headers={"Authorization": self.at}):
+            res = self.app.full_dispatch_request()
+            self.assertTrue(res.status_code == 200,res)
+            risk_score = _get_ip_risk_score("192.168.3.10")
+            self.assertTrue(risk_score == 15,risk_score)
+            
+        #test for valid subnet
+        with self.app.test_request_context("/riskbase/iprisk",
+                                           method="POST",
+                                           data={"ip": ip,
+                                                 "mask": mask,
+                                                 "riskscore": 5},
+                                           headers={"Authorization": self.at}):
+            res = self.app.full_dispatch_request()
+            self.assertTrue(res.status_code == 200,res)
+            #because the subnet is 192.168.1.0/24 then 192.168.1.3 falls within that subnet and therefore should
+            #have the risk score assign to the subnet
+            risk_score = _get_ip_risk_score("192.168.1.3")
+            self.assertTrue(float(risk_score) == float(5),risk_score)
         
