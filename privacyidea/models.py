@@ -872,9 +872,10 @@ class IPRiskScore(MethodsMixin,db.Model):
         if self.ip_version == 0:
             raise ParameterError("invalid ip")
         
-    def get_ip_version_and_type(ip,mask):
+    def get_ip_version_and_type(self,ip,mask):
         import ipaddress
-        subnet = "{0!s}{1!s}".format(ip,f"/{mask}")
+        subnet = "{0!s}/{1!s}".format(ip,mask)
+        print(subnet)
         try:
             addr = ipaddress.IPv4Network(subnet)
             return (4,addr.is_global)

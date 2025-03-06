@@ -143,16 +143,17 @@ def set_ip_risk():
     ip = getParam(param,"ip",required,allow_empty=False)
     mask = getParam(param,"mask",optional)
     risk_score = getParam(param,"riskscore",required,allow_empty=False)
+    version = ip_version(ip)
     
-    if (version := ip_version(ip)) != 0:
+    if version == 0:
         raise ParameterError("Invalid {0!s}".format("IP address" if mask is None else "subnet"))
-    
+
     risk_score = sanitize_risk_score(risk_score)
     
     if mask is None:
         mask = 32 if version == 4 else 128
         
-    r = IPRiskScore(ip,mask=mask,risk_score=risk_score)
+    r = IPRiskScore(ip,mask=mask,risk_score=risk_score).save()
     
     return send_result(r)
     
@@ -176,7 +177,7 @@ def _get_ip_risk_score(ip):
     
     subnet_highest_mask = get_subnet_with_highest_mask(subnets)
     #fetch the risk score for the subnet
-    ip_risk_score = IPRiskScore.query.filter_by(ip=subnet_highest_mask.ip,mask=subnet_highest_mask.mask).first().risk_score
+    ip_risk_score = IPRiskScore.query.filter_by(ip=str(subnet_highest_mask.network_address),mask=subnet_highest_mask.prefixlen).first().risk_score
     return ip_risk_score
 
 def _get_service_risk_score(service):
