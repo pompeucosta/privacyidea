@@ -1,6 +1,22 @@
+html, body
+{
+    height:100%;
+    width:100%;
+    background-color:#ffffff;
+    color:#000000;
+    font-weight:normal;
+    font-family:"Segoe UI" , "Segoe" , "SegoeUI-Regular-final", Tahoma, Helvetica, Arial, sans-serif;
+    min-width:500px;
+    -ms-overflow-style:-ms-autohiding-scrollbar;
+}
+
 body {
     padding: 0;
     margin: 0;
+}
+
+body {
+    font-size: 1.4em;
 }
 
 .well2 {
@@ -11,30 +27,254 @@ body {
 }
 
 #brandingWrapper {
+    background-color: #4488dd;
+    width: 100%;
+    height: 100%;
+}
+
+#brandingWrapper {
     padding: 0px;
     display: flex;
-    width: 100%;
+
     justify-content: space-between;
 }
 
+#branding {
+    height: 100%;
+    margin-right: 500px;
+    margin-left: 0px;
+    width: 70%;
+    background-color: inherit;
+    background-repeat: no-repeat;
+    background-size: cover;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+}
+
 .illustrationClass {
-    width: 75%;
     background-image: url(https://adfs.ua.pt/adfs/portal/illustration/illustration.jpg?id=9320EBC036566DD382FF48F5A40AF95D4559E09E75256D6E192DF62D210430D2);
-    background-size: cover; /* Make sure the image covers the element */
-    background-position: center; /* Center the image */
-    background-repeat: no-repeat; /* Prevent image from repeating */
 }
 
 #contentWrapper {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    background-color: white;
+    position: relative;
+    width: 500px;
+    height: 100%;
+    overflow: auto;
+    background-color: #ffffff;
+    margin-left: -500px;
+    margin-right: 0px;
 }
 
-#brandingWrapper, #contentWrapper {
-    height: 100%;
-    overflow: hidden; /* Prevent overflow */
+#content {
+    min-height: 100%;
+    height: auto !important;
+    margin: 0 auto -55px auto;
+    padding: 0px 150px 0px 50px;
+}
+
+.groupMargin { margin-bottom:30px; }
+.float {
+    float: left;
+}
+
+#header
+{
+    font-size:2em;
+    font-weight:lighter;
+    font-family:"Segoe UI Light" , "Segoe" , "SegoeUI-Light-final", Tahoma, Helvetica, Arial, sans-serif;
+    padding-top: 90px;
+    margin-bottom:60px;
+    min-height:100px;
+    overflow:hidden;
+}
+
+#workArea
+{
+    margin-bottom:90px;
+}
+
+#workArea, #header
+{
+    word-wrap:break-word;
+    width:350px;
+}
+
+input.text {
+    height: 28px;
+    padding: 0px 3px 0px 3px;
+    border: solid 1px #BABABA;
+}
+
+.fullWidth {
+    width: 342px;
+}
+
+input {
+    max-width: 100%;
+    font-family: inherit;
+    margin-bottom: 8px;
+}
+
+.submitMargin {
+    margin-top: 38px;
+    margin-bottom: 30px;
+}
+
+#contentFooter {
+    height: 40px;
+    padding: 10px 50px 0px 50px;
+    position: relative;
+    color: #666666;
+    font-size: 0.78em;
+}
+
+#footerLinks {
+    float: none;
+    padding-top: 10px;
+}
+
+.pageLink {
+    color: #000000;
+    padding-left: 16px;
+}
+
+a {
+    color: #2672ec;
+    text-decoration: none;
+    background-color: transparent;
+}
+
+span.submit, input[type="submit"]
+{
+    border:none;
+    background-color:rgb(38, 114, 236);
+    min-width:80px;
+    width:auto;
+    height:30px;
+    padding:4px 20px 6px 20px;
+    border-style:solid;
+    border-width:1px;
+    transition:background 0s;
+    color:rgb(255, 255, 255);
+    cursor:pointer;
+    margin-bottom:8px;
+    
+    -ms-user-select:none;
+    -moz-transition:background 0s;
+    -webkit-transition:background 0s;
+    -o-transition:background 0s;
+    -webkit-touch-callout:none;
+    -webkit-user-select:none;
+    -khtml-user-select:none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select:none;
+}
+
+
+@media only screen and (max-height: 820px) {
+    #header {
+        padding-top: 40px;
+        min-height:0px;
+        overflow: hidden;
+    }
+
+    #workArea
+    {
+        margin-bottom:60px; 
+    }
+}
+
+/* Form factor: intermediate height layout. Reduce space of the header. */
+@media only screen and (max-height: 500px) {
+    #header {
+        padding-top: 30px;
+        margin-bottom: 30px;
+    }
+    #workArea{
+        margin-bottom:40px; 
+    }
+}
+
+/* Form factor: intermediate layout (WAB in non-snapped view falls in here) */
+@media only screen and (max-width: 600px) {
+    html, body {
+        min-width: 260px;
+    }
+
+    #brandingWrapper {
+        display: none;
+    }
+
+    #contentWrapper {
+        float: none;
+        width: 100%;
+        margin: 0px auto;
+    }
+
+    #content, #contentFooter, #header {
+        width: 400px;
+        padding-left: 0px;
+        padding-right: 0px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    #workArea {
+        width: 100%;
+    }
+
+    .fullWidth {
+        width: 392px;
+    }
+
+    /* .fullWidthIndent {
+        width: 376px;
+    } */
+}
+
+@media only screen and (max-width: 450px) {
+    body {
+        font-size: 0.8em;
+    }
+
+    #content, #contentFooter {
+        width:auto;
+        margin-right:33px;
+        margin-left:25px;
+    }
+
+    #header {
+        width: auto;
+    }
+
+    span.submit, input[type="submit"] {
+        font-size: 0.9em;
+    }
+
+    .fullWidth
+    {
+        width:100%;
+        margin-left:auto;
+        margin-right:auto;
+    }
+
+    /* .fullWidthIndent {
+        width: 85%;
+    }
+
+    .idpDescription
+    {
+        width:70%;
+    } */
+}
+
+/* Form factor: snapped WAB (for WAB to work in snapped view, the content wrapper width has to be set to 260px) */
+@media only screen and (max-width:280px)
+{
+    #contentWrapper
+    {
+        width:260px;
+    }
 }

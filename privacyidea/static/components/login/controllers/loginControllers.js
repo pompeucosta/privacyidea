@@ -45,7 +45,7 @@ angular.module("privacyideaApp")
                   resourceNamePatterns, $window) {
 
             $scope.isLoginPage = function() {
-                return $location.path() === "";
+                return $location.path() === "" || $location.path() === "/login";
             };
 
             $scope.instanceUrl = instanceUrl;
@@ -58,7 +58,7 @@ angular.module("privacyideaApp")
             var obj = angular.element(document.querySelector("#REMOTE_USER"));
             $scope.remoteUser = obj.val();
             if (!$scope.remoteUser) {
-                $scope.loginWithCredentials = false;
+                $scope.loginWithCredentials = true;
             }
             obj = angular.element(document.querySelector('#FORCE_REMOTE_USER'));
             $scope.forceRemoteUser = obj.val();

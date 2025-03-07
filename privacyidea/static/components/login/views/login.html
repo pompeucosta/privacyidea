@@ -30,55 +30,52 @@
     </div>
 
     <div ng-show="loginWithCredentials" class="well2">
-        <div class="container" id="brandingWrapper">
+        <div id="brandingWrapper" class="float">
             <div class="illustrationClass" id="branding"></div>
-            <div id="contentWrapper">
-                <div class="text-center">
-                        <img src="https://adfs.ua.pt/adfs/portal/logo/logo.png?id=B56726764A1C08DA79C78E9DE7F96047A600854A57929C9F6F4659D9E903FB3B"
-                             width="300px">
-                </div>
-                <div class="text-center">
-                    <h2 ng-hide="piLoginText" class="form-signin-heading" translate>Please sign in</h2>
-                    <h2 ng-show="piLoginText" class="form-signin-heading">{{ piLoginText }}</h2>
-                </div>
-                <form name="formSignin" class="form-signin" role="form" novalidate>
-                    <label for="username" class="sr-only" translate>Username</label>
-                    <input name="username" id="username"
-                           class="form-control round-top"
-                           ng-model="login.username" required
-                           placeholder="{{ 'Username'|translate }}"
-                           autofocus/>
-                    <label for="realm" class="sr-only" translate>Realm</label>
-                    <select class="form-control round-none"
-                            name="realm"
-                            placeholder="Realm"
-                            ng-show="piRealms.length > 0"
-                            id="realm"
-                            ng-model="login.realm"
-                            ng-options="realm for realm in piRealms">
-                        <!-- We add a placeholder, if we do not have an empty realm -->
-                        <option ng-hide="piRealms[0]===''" value="" selected translate>Choose a realm...</option>
-                    </select>
-                    <label for="password" class="sr-only" translate>Password</label>
-                    <input name="password" type="password"
-                           id="password" class="form-control round-bottom"
-                           ng-model="login.password" required
-                           placeholder="{{ 'Password'|translate }}"/>
-    
-                    <div class="text-center">
-                        <button ng-click="authenticate_first();"
-                                ng-disabled="formSignin.$invalid"
-                                class="btn btn-primary btn-block" translate>Log In
-                        </button>
-                        <button ng-click="passkeyLogin()"
-                                class="btn btn-primary btn-block">
-                            Passkey Log In
-                        </button>
-                        <p class="text-right" ng-show="passwordReset === 'True'">
-                            <a ui-sref="recovery" translate>Reset Password</a>
-                        </p>
+            <div id="contentWrapper" class="float">
+                <div id="content">
+                    <div id="header">
+                            <img src="https://adfs.ua.pt/adfs/portal/logo/logo.png?id=B56726764A1C08DA79C78E9DE7F96047A600854A57929C9F6F4659D9E903FB3B"
+                                 width="300px">
                     </div>
-                </form>
+                    <div id="workArea">
+                        <div ng-hide="piLoginText" class="groupMargin">Sign in with your organizational account</div>
+                        <h2 ng-show="piLoginText" class="form-signin-heading">{{ piLoginText }}</h2>
+                        <form name="formSignin" class="" role="form" novalidate>
+                            <input name="username" id="userNameInput"
+                            class="text fullWidth"
+                            ng-model="login.username" required
+                            placeholder="{{ 'Username'|translate }}"
+                            autofocus/>
+                            
+                            <!-- <label for="password" class="sr-only" translate>Password</label> -->
+                            <input name="password" type="password"
+                            id="password" class="text fullWidth"
+                            ng-model="login.password" required
+                            placeholder="{{ 'Password'|translate }}"/>
+                            
+                            <div class="submitMargin">
+                                <span ng-click="authenticate_first();"
+                                ng-disabled="formSignin.$invalid"
+                                class="submit" id="submitButton" translate>Sign In
+                                </span>
+                            </div>
+                        </form>
+                        <div class="groupMargin">
+                            Access to this platform requires users to have a UA electronic identity. 
+                            Get further information
+                            <a href="https://id.ua.pt/">here</a>.
+                        </div>
+                    </div>
+                </div>
+                <div id="contentFooter">
+                    <div id="footerLinks">
+                        <div>
+                            <a class="pageLink" href="https://www.ua.pt">University of Aveiro</a>
+                            <a class="pageLink" href="http://www.ua.pt/stic/page/11591">Servicedesk</a>
+                        </div>
+                    </div>
+                </div> 
             </div>
         </div>
     </div>
