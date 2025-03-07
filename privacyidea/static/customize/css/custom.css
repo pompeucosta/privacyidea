@@ -1,32 +1,24 @@
 body {
     padding: 0;
+    margin: 0;
 }
 
 .well2 {
     width: 100vw;
     height: 100vh;
     margin-left: calc(-50vw + 50%);
-    margin-top: -40px;
     position: relative;
 }
 
-.well2 > .container {
-    padding-top: 20px;
-    margin: 0;
-}
-
 #brandingWrapper {
-    margin: 0px;
     padding: 0px;
     display: flex;
     width: 100%;
-    height: 100%; 
     justify-content: space-between;
 }
 
 .illustrationClass {
     width: 75%;
-    height: 100%;
     background-image: url(https://adfs.ua.pt/adfs/portal/illustration/illustration.jpg?id=9320EBC036566DD382FF48F5A40AF95D4559E09E75256D6E192DF62D210430D2);
     background-size: cover; /* Make sure the image covers the element */
     background-position: center; /* Center the image */
@@ -35,10 +27,14 @@ body {
 
 #contentWrapper {
     flex: 1;
-    height: 100%; 
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
     background-color: white;
+}
+
+#brandingWrapper, #contentWrapper {
+    height: 100%;
+    overflow: hidden; /* Prevent overflow */
 }

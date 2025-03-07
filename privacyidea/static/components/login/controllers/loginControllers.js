@@ -44,6 +44,10 @@ angular.module("privacyideaApp")
                   PollingAuthFactory, $transitions,
                   resourceNamePatterns, $window) {
 
+            $scope.isLoginPage = function() {
+                return $location.path() === "";
+            };
+
             $scope.instanceUrl = instanceUrl;
             $scope.checkRight = AuthFactory.checkRight;
             $scope.getRightsValue = AuthFactory.getRightsValue;
@@ -54,7 +58,7 @@ angular.module("privacyideaApp")
             var obj = angular.element(document.querySelector("#REMOTE_USER"));
             $scope.remoteUser = obj.val();
             if (!$scope.remoteUser) {
-                $scope.loginWithCredentials = true;
+                $scope.loginWithCredentials = false;
             }
             obj = angular.element(document.querySelector('#FORCE_REMOTE_USER'));
             $scope.forceRemoteUser = obj.val();
