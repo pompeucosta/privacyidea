@@ -366,5 +366,10 @@ angular.module('privacyideaApp.configStates', ['ui.router', 'privacyideaApp.vers
                     templateUrl: configpath + "config.periodictasks.details.html" + versioningSuffixProviderProvider.$get().$get(),
                     controller: "periodicTaskDetailController"
                 })
+                .state('config.risk', {
+                    url: "/risk",
+                    templateUrl: configpath + "config.risk.html" + versioningSuffixProviderProvider.$get().$get(),
+                    controller: "riskController"
+                })
             ;
         }]);

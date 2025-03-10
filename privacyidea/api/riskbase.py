@@ -54,106 +54,131 @@ def check_risk():
         
     return send_result(r)
 
-@riskbase_blueprint.route("/userrisk",methods=["POST"])
+x = {
+        "default_user_risk": 3,
+        "default_service_risk": 7,
+        "default_ip_risk": 5,
+        "user_types": ["Student", "Admin", "Professor"],
+        "user_risk": {
+            "Professor": 5,
+            "Admin": 10 
+        },
+        "service_risk": {
+            "servico 1": 2,
+            "paco": 5,
+            "elearning": 1
+        },
+        "ip_risk": {
+            "192.168.5.0/24": 3
+        }
+    }
+
+@riskbase_blueprint.route("/",methods=["GET"])
+@admin_required
+def get_risk_config():
+    """
+    """
+    
+    return send_result(x)
+
+@riskbase_blueprint.route("/user/<identifier>",methods=["DELETE"])
+@admin_required
+def delete_user_risk(identifier):
+    if not identifier in x["user_risk"]:
+        raise ParameterError("Identifier does not exist.")
+    
+    del x["user_risk"][identifier]
+
+@riskbase_blueprint.route("/service/<identifier>",methods=["DELETE"])
+@admin_required
+def delete_service_risk(identifier):
+    if not identifier in x["service_risk"]:
+        raise ParameterError("Identifier does not exist.")
+    
+    del x["serivce_risk"][identifier]
+
+@riskbase_blueprint.route("/ip/<identifier>",methods=["DELETE"])
+@admin_required
+def delete_ip_risk(identifier):
+    if not identifier in x["ip_risk"]:
+        raise ParameterError("Identifier does not exits.")
+    
+    del x["ip_risk"][identifier]
+    
+@riskbase_blueprint.route("/user",methods=["POST"])
 @admin_required
 def set_user_risk():
     """
-    Set the risk score for a specific user
-    
-    :queryparam user: username of the user
-    :queryparam realm: realm of the user
-    :queryparam riskscore: the risk score to be attached to the user
-    :return:
     """
     
     param = request.all_data
-    user_obj: User = get_user_from_param(param,required)
+    user_type = getParam(param,"user_type",required)
+    score = getParam(param,"risk_score",required)
     
-    if not user_obj.exist():
-        log.info("user {0!s}@{1!s} does not exist".format(user_obj.login,user_obj.realm))
-        raise ParameterError("Invalid user! User {0!s} does not exist.".format(user_obj.login))
-        
-    risk_score = getParam(param,"riskscore",required,allow_empty=False)
+    score = sanitize_risk_score(score)
     
-    risk_score = sanitize_risk_score(risk_score)
+    x["user_risk"][user_type] = score
     
-    r = user_obj.set_attribute("risk_score",risk_score)
-    g.audit_object.log({"success": True,
-                        "info": "{0!s}@{1!s}: {2!s}".format(user_obj.login,user_obj.realm,risk_score)})
+    r = True
     
     return send_result(r)
+    
 
-@riskbase_blueprint.route("/servicerisk",methods=["POST"])
+@riskbase_blueprint.route("/service",methods=["POST"])
 @admin_required
 def set_service_risk():
     """
-    Set the risk score for a specific service
-    
-    :queryparam servicename: the name of the service
-    :queryparam riskscore: the risk score to be attached to the service
-    :return:
     """
     param = request.all_data
-    servicename = getParam(param,"servicename",required,allow_empty=False)
-    risk_score = getParam(param,"riskscore",required,allow_empty=False)
+    service = getParam(param,"service",required)
+    score = getParam(param,"risk_score",required)
     
-    risk_score = sanitize_risk_score(risk_score)
-    r = ServiceRiskScore(servicename,risk_score).save()
+    score = sanitize_risk_score(score)
     
-    g.audit_object.log({"sucess": True,
-                        "info": "{0!s}: {1!s}".format(servicename,risk_score)})
+    x["service_risk"][service] = score
+    
+    r = True
     
     return send_result(r)
 
-@riskbase_blueprint.route("/usertyperisk",methods=["POST"])
-@admin_required
-def set_user_type_risk():
-    """
-    Set the risk score for a specific type of user
-    
-    :queryparam usertype: the type of user
-    :queryparam riskscore: the risk score to be attached to the user type
-    :return:
-    """
-    
-    param = request.all_data
-    user_type = getParam(param,"usertype",required,allow_empty=False)
-    risk_score = getParam(param,"riskscore",required,allow_empty=False)
-    
-    risk_score = sanitize_risk_score(risk_score)
-    
-    r = UserTypeRiskScore(user_type,risk_score).save()
-    g.audit_object.log({"sucess": True,
-                        "info": "{0!s}: {1!s}".format(user_type,risk_score)})
-    
-    return send_result(r)
 
-@riskbase_blueprint.route("/iprisk",methods=["POST"])
+@riskbase_blueprint.route("/ip",methods=["POST"])
 @admin_required
 def set_ip_risk():
     """
     Set the risk score for an IP or subnet
     
     :queryparam ip: the ip address
-    :queryparam mask: the ip mask for the subnet. If not provided, the IP will be considered a single IP instead of a subnet
     :queryparam riskscore: the risk score to be attached to the IP
     :return:
     """
     param = request.all_data
-    ip = getParam(param,"ip",required,allow_empty=False)
-    mask = getParam(param,"mask",optional)
-    risk_score = getParam(param,"riskscore",required,allow_empty=False)
-    version = ip_version(ip)
+    ip: str = getParam(param,"ip",required,allow_empty=False)
+    risk_score = getParam(param,"risk_score",required,allow_empty=False)
     
-    if version == 0:
-        raise ParameterError("Invalid {0!s}".format("IP address" if mask is None else "subnet"))
-
     risk_score = sanitize_risk_score(risk_score)
     
-    if mask is None:
-        mask = 32 if version == 4 else 128
+    x["ip_risk"][ip] = risk_score
+    r = True
+    # version = ip_version(ip)
+    
+    # tmp = ip.split("/")
+    # mask = None
+    # if len(tmp) > 1:
+    #     try:
+    #         mask = int(tmp[1])
+    #     except:
+    #         raise ParameterError("IP mask must be an integer.")
+    
+    # if version == 0:
+    #     raise ParameterError("Invalid {0!s}".format("IP address" if mask is None else "subnet"))
+
+    # risk_score = sanitize_risk_score(risk_score)
+    
+    # if mask is None:
+    #     mask = 32 if version == 4 else 128
         
-    r = IPRiskScore(ip,mask=mask,risk_score=risk_score).save()
+    # r = IPRiskScore(ip,mask=mask,risk_score=risk_score).save()
     
     return send_result(r)
     
@@ -216,7 +241,7 @@ def sanitize_risk_score(risk_score):
         ParameterError: if risk score is not a number
 
     Returns:
-        float: the sanitized risk score. if risk_score is less than 0 then return -1, else return risk_score.
+        float: the sanitized risk score.
     """
     try:
         risk_score = float(risk_score)
@@ -225,7 +250,7 @@ def sanitize_risk_score(risk_score):
         raise ParameterError("Risk score must be a number")
     
     if risk_score < 0:
-        return -1
+        raise ParameterError("Risk score must be a positive number")
     
     return risk_score
 

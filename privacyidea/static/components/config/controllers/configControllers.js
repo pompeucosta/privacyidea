@@ -505,6 +505,91 @@ myApp.controller("policyDetailsController", ["$scope", "$stateParams",
         };
     }]);
 
+myApp.controller("riskController", ["$scope", "ConfigFactory",
+    "inform","gettextCatalog",
+    function($scope, ConfigFactory,inform,gettextCatalog) {
+        $scope.form = {};
+
+        $scope.loadRiskConfig = function() {
+            ConfigFactory.loadRiskConfig(function(data) {
+                $scope.form = data.result.value
+            });
+        };
+
+        $scope.addUserRisk = function() {
+            if ($scope.newUserType && $scope.newUserRiskScore) {
+                params = {
+                    "user_type": $scope.newUserType,
+                    "risk_score": $scope.newUserRiskScore
+                };
+                ConfigFactory.addRiskScore("user",params, function(data) {
+                    if (data.result.status === true) {
+                        inform.add(gettextCatalog.getString("User risk added."),
+                            {type: "info"});
+                        $scope.newUserType = ""
+                        $scope.newUserRiskScore = ""
+                        $scope.loadRiskConfig();
+                    }
+                });
+            }
+        };
+
+        $scope.addServiceRisk = function() {
+            if ($scope.newServiceName && $scope.newServiceRiskScore) {
+                param = {
+                    "service": $scope.newServiceName,
+                    "risk_score": $scope.newServiceRiskScore
+                };
+                ConfigFactory.addRiskScore("service",param,function(data) {
+                    if(data.result.status === true) {
+                        inform.add(gettextCatalog.getString("Service risk added."),
+                            {type: "info"});
+                        $scope.newServiceName = ""
+                        $scope.newServiceRiskScore = ""
+                        $scope.loadRiskConfig();
+                    }
+                });
+            }
+        };
+
+        $scope.addIPRisk = function() {
+            if ($scope.newIP && $scope.newIPRiskScore) {
+                param = {
+                    "ip": $scope.newIP,
+                    "risk_score": $scope.newIPRiskScore
+                }
+                ConfigFactory.addRiskScore("ip",param,function(data) {
+                    if(data.result.status === true) {
+                        inform.add(gettextCatalog.getString("IP risk added."),
+                            {type: "info"});
+                        $scope.newIP = ""
+                        $scope.newIPRiskScore = ""
+                        $scope.loadRiskConfig();
+                    }
+                })
+            }
+        };
+
+        $scope.deleteRisk = function(key) {
+
+        };
+
+        $scope.hasDefinedUserRisks = function() {
+            return "user_risk" in $scope.form && Object.keys($scope.form["user_risk"]).length > 0;
+        }
+
+        $scope.hasDefinedServiceRisks = function() {
+            return "service_risk" in $scope.form && Object.keys($scope.form["service_risk"]).length > 0;
+        }
+
+        $scope.hasDefinedIPRisks = function() {
+            return "ip_risk" in $scope.form && Object.keys($scope.form["ip_risk"]).length > 0;
+        }
+
+        $scope.loadRiskConfig();
+    }
+]);
+
 myApp.controller("tokenConfigController", ["$scope", "$location", "$rootScope",
     "$state", "$stateParams",
     "ConfigFactory", "instanceUrl",
