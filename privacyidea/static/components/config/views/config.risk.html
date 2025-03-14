@@ -8,22 +8,22 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="(key,value) in form['user_risk']"
+            <tr ng-repeat="element in form['user_risk']"
                 ng-if="hasDefinedUserRisks()">
-                <td>{{key}}</td>
-                <td>{{value}}</td>
+                <td>{{element.type}}</td>
+                <td>{{element.risk_score}}</td>
                 <td>
                     <button class="btn btn-danger"
-                            ng-click="deleteRisk(key)">
+                            ng-click="deleteRisk('user',element.id)">
                         Delete
                     </button>
                 </td>
             </tr>
-            <tr>
+            <tr ng-show="hasUserTypesWithoutRisk()">
                 <td>
                     <select class="form-control"
                         ng-model="newUserType" name="userType"
-                        ng-options="select for select in form['user_types']">
+                        ng-options="select for select in typesWithoutScore">
                     </select>
                 </td>
                 <td>
@@ -33,8 +33,7 @@
                 <td>
                     <button class="btn btn-default"
                             ng-click="addUserRisk()">
-                        <span class="glyphicon glyphicon-question-sign"></span>
-                        <span translate>Add new user risk score</span>
+                        Add new user risk score
                     </button>
                 </td>
             </tr>
@@ -51,13 +50,13 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="(key,value) in form['service_risk']"
+            <tr ng-repeat="element in form['service_risk']"
                 ng-if="hasDefinedServiceRisks()">
-                <td>{{key}}</td>
-                <td>{{value}}</td>
+                <td>{{element.name}}</td>
+                <td>{{element.risk_score}}</td>
                 <td>
                     <button class="btn btn-danger"
-                            ng-click="deleteRisk(key)">
+                            ng-click="deleteRisk('service',element.id)">
                         Delete
                     </button>
                 </td>
@@ -76,8 +75,7 @@
                 <td>
                     <button class="btn btn-default"
                             ng-click="addServiceRisk()">
-                        <span class="glyphicon glyphicon-question-sign"></span>
-                        <span translate>Add new service risk score</span>
+                        Add new service risk score
                     </button>
                 </td>
             </tr>
@@ -94,13 +92,13 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="(key,value) in form['ip_risk']"
+            <tr ng-repeat="element in form['ip_risk']"
                 ng-if="hasDefinedIPRisks()">
-                <td>{{key}}</td>
-                <td>{{value}}</td>
+                <td>{{element.ip}}</td>
+                <td>{{element.risk_score}}</td>
                 <td>
                     <button class="btn btn-danger"
-                            ng-click="deleteRisk(key)">
+                            ng-click="deleteRisk('ip',element.id)">
                         Delete
                     </button>
                 </td>
@@ -119,8 +117,49 @@
                 <td>
                     <button class="btn btn-default"
                             ng-click="addIPRisk()">
-                        <span class="glyphicon glyphicon-question-sign"></span>
-                        <span translate>Add new IP risk score</span>
+                        Add new IP risk score
+                    </button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<h2>Thresholds</h2>
+<div class="table-responsive">
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Token</th>
+                <th>Threshold required</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="element in form['thresholds'] | orderBy : 'threshold'"
+            ng-show="hasDefinedThresholds()">
+                <td>{{element.token}}</td>
+                <td>{{element.threshold}}</td>
+                <td>
+                    <button class="btn btn-danger"
+                            ng-click="deleteThreshold(element.id)">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <select class="form-control"
+                        ng-model="newThresholdToken" name="thresholdToken"
+                        ng-options="select for select in form['token_types']">
+                    </select>
+                </td>
+                <td>
+                    <input type="number" class="form-control"
+                           ng-model="newThresholdValue" name="thresholdValue" />
+                </td>
+                <td>
+                    <button class="btn btn-default"
+                            ng-click="addThreshold()">
+                        Add new Threshold
                     </button>
                 </td>
             </tr>

@@ -1027,6 +1027,30 @@ myApp.factory("ConfigFactory", ["AuthFactory", "$http", "$state", "$rootScope",
                 },function(error) {
                     AuthFactory.authError(error.data)
                 });
+            },
+            addThreshold: function(params,callback) {
+                $http.post(riskUrl + "/threshold",params, {
+                    headers: {
+                        'PI-Authorization': AuthFactory.getAuthToken(),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(function(response) {
+                    callback(response.data)
+                }, function(error) {
+                    AuthFactory.authError(error.data)
+                });
+            },
+            delThreshold: function(identifier,callback) {
+                $http.delete(riskUrl + "/threshold/" + identifier, {
+                    headers: {
+                        'PI-Authorization': AuthFactory.getAuthToken(),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(function(response) {
+                    callback(response.data)
+                }, function(error) {
+                    AuthFactory.authError(error.data)
+                });
             }
         };
     }]);

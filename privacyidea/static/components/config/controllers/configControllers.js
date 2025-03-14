@@ -509,10 +509,16 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
     "inform","gettextCatalog",
     function($scope, ConfigFactory,inform,gettextCatalog) {
         $scope.form = {};
+        $scope.typesWithoutScore = []
 
         $scope.loadRiskConfig = function() {
             ConfigFactory.loadRiskConfig(function(data) {
+                $scope.typesWithoutScore = []
                 $scope.form = data.result.value
+                $scope.typesWithoutScore = $scope.form["user_types"]
+                $scope.typesWithoutScore = $scope.form["user_types"].filter(userType =>
+                    !$scope.form["user_risk"].some(risk => risk.type === userType)
+                );
             });
         };
 
@@ -524,7 +530,7 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                 };
                 ConfigFactory.addRiskScore("user",params, function(data) {
                     if (data.result.status === true) {
-                        inform.add(gettextCatalog.getString("User risk added."),
+                        inform.add(gettextCatalog.getString("user risk added."),
                             {type: "info"});
                         $scope.newUserType = ""
                         $scope.newUserRiskScore = ""
@@ -534,6 +540,8 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
             }
         };
 
+        
+
         $scope.addServiceRisk = function() {
             if ($scope.newServiceName && $scope.newServiceRiskScore) {
                 param = {
@@ -542,7 +550,7 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                 };
                 ConfigFactory.addRiskScore("service",param,function(data) {
                     if(data.result.status === true) {
-                        inform.add(gettextCatalog.getString("Service risk added."),
+                        inform.add(gettextCatalog.getString("service risk added."),
                             {type: "info"});
                         $scope.newServiceName = ""
                         $scope.newServiceRiskScore = ""
@@ -570,20 +578,66 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
             }
         };
 
-        $scope.deleteRisk = function(key) {
-
+        $scope.addThreshold = function() {
+            if($scope.newThresholdToken && $scope.newThresholdValue) {
+                param = {
+                    "token": $scope.newThresholdToken,
+                    "threshold": $scope.newThresholdValue
+                }
+                ConfigFactory.addThreshold(param, function(data) {
+                    if(data.result.status === true) {
+                        inform.add(gettextCatalog.getString("IP risk added."),
+                            {type: "info"});
+                        $scope.newThresholdToken = ""
+                        $scope.newThresholdValue = ""
+                        $scope.loadRiskConfig();
+                    }
+                })
+            }
         };
 
+        $scope.deleteRisk = function(type,key) {
+            ConfigFactory.delRiskScore(type,key, function(data) {
+                if(data.result.status === true) {
+                    inform.add(gettextCatalog.getString(type + " risk deleted."),
+                            {type: "info"});
+                    $scope.loadRiskConfig();
+                }
+            })
+        };
+
+        $scope.deleteThreshold = function(identifier) {
+            ConfigFactory.delThreshold(identifier, function(data) {
+                if(data.result.status === true) {
+                    inform.add(gettextCatalog.getString("threshold for " + identifier + " deleted."),
+                            {type: "info"});
+                    $scope.loadRiskConfig();
+                }
+            })
+        }
+
+        $scope.hasDefinedValues = function(key) {
+            return key in $scope.form && Object.keys($scope.form[key]).length > 0;
+        }
+
+        $scope.hasUserTypesWithoutRisk = function() {
+            return $scope.typesWithoutScore.length > 0;
+        }
+
         $scope.hasDefinedUserRisks = function() {
-            return "user_risk" in $scope.form && Object.keys($scope.form["user_risk"]).length > 0;
+            return $scope.hasDefinedValues("user_risk");
         }
 
         $scope.hasDefinedServiceRisks = function() {
-            return "service_risk" in $scope.form && Object.keys($scope.form["service_risk"]).length > 0;
+            return $scope.hasDefinedValues("service_risk");
         }
 
         $scope.hasDefinedIPRisks = function() {
-            return "ip_risk" in $scope.form && Object.keys($scope.form["ip_risk"]).length > 0;
+            return $scope.hasDefinedValues("ip_risk");
+        }
+
+        $scope.hasDefinedThresholds = function() {
+            return $scope.hasDefinedValues("thresholds");
         }
 
         $scope.loadRiskConfig();
