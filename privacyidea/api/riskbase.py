@@ -6,7 +6,8 @@ from privacyidea.lib.error import ParameterError
 from privacyidea.lib.log import log_with
 from privacyidea.api.lib.utils import required,optional,send_result,getParam
 from privacyidea.lib.user import User, get_user_from_param
-from privacyidea.models import ServiceRiskScore,UserTypeRiskScore,IPRiskScore
+from privacyidea.models import ServiceRiskScore,UserTypeRiskScore,IPRiskScore,ThresholdScore
+from privacyidea.lib.config import get_token_types
 import ipaddress
 
 log = logging.getLogger(__name__)
@@ -59,54 +60,117 @@ x = {
         "default_service_risk": 7,
         "default_ip_risk": 5,
         "user_types": ["Student", "Admin", "Professor"],
-        "user_risk": {
-            "Professor": 5,
-            "Admin": 10 
-        },
-        "service_risk": {
-            "servico 1": 2,
-            "paco": 5,
-            "elearning": 1
-        },
-        "ip_risk": {
-            "192.168.5.0/24": 3
-        }
+        "user_risk": [
+            {"id": 0,"type": "Professor", "risk_score": 5},
+            {"id": 1,"type": "Admin", "risk_score": 10}
+        ], 
+        "service_risk": [
+            {"id": 0,"name": "servico 1", "risk_score": 2},
+            {"id": 1,"name": "paco", "risk_score": 5},
+            {"id": 2,"name": "elearning", "risk_score": 1}
+        ],
+        "ip_risk": [
+            {"id": 0,"ip": "192.168.5.0/24", "risk_score": 3}
+        ],
+        "thresholds": [
+            {"id": 0,"token": "TOTP", "threshold": 7},
+            {"id": 1,"token": "PUSH", "threshold": 5}
+        ]
     }
 
 @riskbase_blueprint.route("/",methods=["GET"])
-@admin_required
 def get_risk_config():
     """
     """
     
-    return send_result(x)
+    users = UserTypeRiskScore.query.all()
+    services = ServiceRiskScore.query.all()
+    ips = IPRiskScore.query.all()
+    trs = ThresholdScore.query.all()
+
+    r = {}
+    
+    r["default_user_risk"] = 3
+    r["default_service_risk"] = 7
+    r["default_ip_risk"] = 5
+    r["user_types"] = ["Student", "Admin", "Professor"]
+    r["token_types"] = get_token_types()
+    
+    if len(users) > 0:
+        r["user_risk"] = []
+        for entry in users:
+            r["user_risk"].append({"id": entry.id,"type": entry.user_type, "risk_score": entry.risk_score})
+    
+    if len(services) > 0:
+        r["service_risk"] = []
+        for entry in services:
+            r["service_risk"].append({"id": entry.id,"name": entry.service_name, "risk_score": entry.risk_score})
+    
+    if len(ips) > 0 :
+        r["ip_risk"] = []
+        for entry in ips:
+            r["ip_risk"].append({"id": entry.id,"ip": f"{entry.ip}/{entry.mask}", "risk_score": entry.risk_score})
+    
+    if len(trs) > 0:
+        r["thresholds"] = []
+        for entry in trs:
+            r["thresholds"].append({"id": entry.id,"token": entry.token,"threshold": entry.threshold})
+    
+    return send_result(r)
 
 @riskbase_blueprint.route("/user/<identifier>",methods=["DELETE"])
-@admin_required
 def delete_user_risk(identifier):
-    if not identifier in x["user_risk"]:
-        raise ParameterError("Identifier does not exist.")
+    identifier = int(identifier)
     
-    del x["user_risk"][identifier]
+    ur = UserTypeRiskScore.query.filter_by(id=identifier).first()
+    
+    if ur == None:
+        raise ParameterError("User risk with the specified identifier does not exist.")
+    
+    r = ur.delete()
+    
+    return send_result(r)
 
 @riskbase_blueprint.route("/service/<identifier>",methods=["DELETE"])
-@admin_required
 def delete_service_risk(identifier):
-    if not identifier in x["service_risk"]:
-        raise ParameterError("Identifier does not exist.")
+    identifier = int(identifier)
     
-    del x["serivce_risk"][identifier]
+    sr = ServiceRiskScore.query.filter_by(id=identifier).first()
+    
+    if sr == None:
+        raise ParameterError("Service risk with the specified identifier does not exist.")
+    
+    r = sr.delete()
+    
+    return send_result(r)
 
 @riskbase_blueprint.route("/ip/<identifier>",methods=["DELETE"])
-@admin_required
 def delete_ip_risk(identifier):
-    if not identifier in x["ip_risk"]:
-        raise ParameterError("Identifier does not exits.")
+    identifier = int(identifier)
     
-    del x["ip_risk"][identifier]
+    ip = IPRiskScore.query.filter_by(id=identifier).first()
+    
+    if ip == None:
+        raise ParameterError("IP risk with the specified identifier does not exist.")
+    
+    r = ip.delete()
+
+    return send_result(r)
+
+@riskbase_blueprint.route("/threshold/<identifier>",methods=["DELETE"])
+def delete_threshold(identifier):
+    identifier = int(identifier)
+
+    ts = ThresholdScore.query.filter_by(id=identifier).first()
+    
+    if ts == None:
+        raise ParameterError("Threshold with the specified identifier does not exist.")
+    
+    r = ts.delete()
+    
+    return send_result(r)
     
 @riskbase_blueprint.route("/user",methods=["POST"])
-@admin_required
 def set_user_risk():
     """
     """
@@ -117,15 +181,13 @@ def set_user_risk():
     
     score = sanitize_risk_score(score)
     
-    x["user_risk"][user_type] = score
-    
-    r = True
+    #TODO: check if type exists
+    r = UserTypeRiskScore(user_type,score).save()
     
     return send_result(r)
     
 
 @riskbase_blueprint.route("/service",methods=["POST"])
-@admin_required
 def set_service_risk():
     """
     """
@@ -135,15 +197,25 @@ def set_service_risk():
     
     score = sanitize_risk_score(score)
     
-    x["service_risk"][service] = score
-    
-    r = True
+    r = ServiceRiskScore(service,score).save()
     
     return send_result(r)
 
+@riskbase_blueprint.route("/threshold",methods=["POST"])
+def set_threshold():
+    param = request.all_data
+    token_type = getParam(param,"token",required)
+    threshold = getParam(param,"threshold",required)
+    
+    #TODO: check if token_type exists
+    if not token_type in get_token_types():
+        raise ParameterError("Token type does not exist.")
+        
+    r = ThresholdScore(token_type,threshold).save()
+    
+    return send_result(r)
 
 @riskbase_blueprint.route("/ip",methods=["POST"])
-@admin_required
 def set_ip_risk():
     """
     Set the risk score for an IP or subnet
@@ -156,32 +228,29 @@ def set_ip_risk():
     ip: str = getParam(param,"ip",required,allow_empty=False)
     risk_score = getParam(param,"risk_score",required,allow_empty=False)
     
+    version = ip_version(ip)
+    
+    tmp = ip.split("/")
+    mask = None
+    if len(tmp) > 1:
+        try:
+            mask = int(tmp[1])
+            ip = tmp[0]
+        except:
+            raise ParameterError("IP mask must be an integer.")
+    
+    if version == 0:
+        raise ParameterError("Invalid {0!s}".format("IP address" if mask is None else "subnet"))
+
     risk_score = sanitize_risk_score(risk_score)
     
-    x["ip_risk"][ip] = risk_score
-    r = True
-    # version = ip_version(ip)
-    
-    # tmp = ip.split("/")
-    # mask = None
-    # if len(tmp) > 1:
-    #     try:
-    #         mask = int(tmp[1])
-    #     except:
-    #         raise ParameterError("IP mask must be an integer.")
-    
-    # if version == 0:
-    #     raise ParameterError("Invalid {0!s}".format("IP address" if mask is None else "subnet"))
-
-    # risk_score = sanitize_risk_score(risk_score)
-    
-    # if mask is None:
-    #     mask = 32 if version == 4 else 128
+    if mask is None:
+        mask = 32 if version == 4 else 128
         
-    # r = IPRiskScore(ip,mask=mask,risk_score=risk_score).save()
+    r = IPRiskScore(ip,mask=mask,risk_score=risk_score).save()
     
     return send_result(r)
-    
+
 def _get_ip_risk_score(ip):
     addr = ipaddress.ip_address(ip)
     version = ip_version(ip)

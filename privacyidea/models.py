@@ -947,35 +947,30 @@ class UserTypeRiskScore(MethodsMixin,db.Model):
         db.session.commit()
         return ret
     
-# class UserRiskScore(MethodsMixin,db.Model):
-#     __tablename__ = "userriskscore"
-#     id = db.Column(db.Integer(), Sequence("userriskscore_seq"),primary_key=True)
-#     user_id = db.Column(db.Unicode(320), default='', index=True)
-#     resolver = db.Column(db.Unicode(120), default='', index=True)
-#     realm_id = db.Column(db.Integer(), db.ForeignKey('realm.id'))
-#     risk_score = db.Column(db.Integer(),nullable=False)
+class ThresholdScore(MethodsMixin,db.Model):
+    __tablename__ = "thresholdriskscore"
+    id = db.Column(db.Integer(),Sequence("thresholdriskscore_seq"),primary_key=True)
+    token = db.Column(db.Unicode(50),nullable=False)
+    threshold = db.Column(db.Integer(),nullable=False)
     
-#     def __init__(self,user_id,resolver,realm_id,risk_score):
-#         self.user_id = user_id
-#         self.resolver = resolver
-#         self.realm_id = realm_id
-#         self.risk_score = risk_score
+    def __init__(self,token,threshold):
+        self.token = token
+        self.threshold = threshold
         
-#     def save(self):
-#         ur = UserRiskScore.query.filter_by(user_id=self.user_id,resolver=self.resolver,
-#                                       realm_id=self.realm_id).first()
-#         if ur is None:
-#             db.session.add(self)
-#             db.session.commit()
-#             ret = self.id
-#         else:
-#             UserRiskScore.query.filter_by(user_id=self.user_id,resolver=self.resolver,
-#                                       realm_id=self.realm_id).update({"risk_score":self.risk_score})
-#             ret = ur.id
+    def save(self):
+        ts = ThresholdScore.query.filter_by(token=self.token).first()
         
-#         db.session.commit()
-#         return ret
-
+        if ts == None:
+            db.session.add(self)
+            db.session.commit()
+            ret = self.id
+        else:
+            ThresholdScore.query.filter_by(token=self.token).update({"threshold": self.threshold})
+            ret = ts.id
+            
+        db.session.commit()
+        return ret
+    
 class Admin(db.Model):
     """
     The administrators for managing the system.
