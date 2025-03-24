@@ -1,130 +1,30 @@
-<h2 translate>Risk Settings</h2>
-<div class="table-responsive">
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>User Type</th>
-                <th>Risk Score</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="element in form['user_risk']"
-                ng-if="hasDefinedUserRisks()">
-                <td>{{element.type}}</td>
-                <td>{{element.risk_score}}</td>
-                <td>
-                    <button class="btn btn-danger"
-                            ng-click="deleteRisk('user',element.id)">
-                        Delete
-                    </button>
-                </td>
-            </tr>
-            <tr ng-show="hasUserTypesWithoutRisk()">
-                <td>
-                    <select class="form-control"
-                        ng-model="newUserType" name="userType"
-                        ng-options="select for select in typesWithoutScore">
-                    </select>
-                </td>
-                <td>
-                    <input type="number" class="form-control"
-                            ng-model="newUserRiskScore" name="riskScore"/>
-                </td>
-                <td>
-                    <button class="btn btn-default"
-                            ng-click="addUserRisk()">
-                        Add new user risk score
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+<div class="row">
+    <div class="col-lg-3 sticky">
+        <div class="pa-sidebar panel">
+            <ul class="nav nav-pills nav-stacked nav-capitalize">
+                <li role="presentation"
+                    ng-show="checkRight('policyread')"
+                    ng-class="{ active: $state.includes('config.risk.user')}">
+                    <a ui-sref="config.risk.user" translate>
+                        User type</a></li>
+                <li role="presentation"
+                    ng-show="checkRight('policyread')"
+                    ng-class="{ active: $state.includes('config.risk.service')}">
+                    <a ui-sref="config.risk.service" translate>
+                        Service</a></li>
+                <li role="presentation"
+                    ng-show="checkRight('policyread')"
+                    ng-class="{ active: $state.includes('config.risk.ip')}">
+                    <a ui-sref="config.risk.ip" translate>
+                        IP</a></li>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div ui-view class="col-lg-9 slide panel"></div>
 </div>
 
-<div class="table-responsive">
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Service</th>
-                <th>Risk Score</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="element in form['service_risk']"
-                ng-if="hasDefinedServiceRisks()">
-                <td>{{element.name}}</td>
-                <td>{{element.risk_score}}</td>
-                <td>
-                    <button class="btn btn-danger"
-                            ng-click="deleteRisk('service',element.id)">
-                        Delete
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <input type="text"
-                            class="form-control"
-                            ng-model="newServiceName"
-                            name="service"/>
-                </td>
-                <td>
-                    <input type="number" class="form-control"
-                            ng-model="newServiceRiskScore" name="riskScore"/>
-                </td>
-                <td>
-                    <button class="btn btn-default"
-                            ng-click="addServiceRisk()">
-                        Add new service risk score
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<div class="table-responsive">
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>IP</th>
-                <th>Risk Score</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="element in form['ip_risk']"
-                ng-if="hasDefinedIPRisks()">
-                <td>{{element.ip}}</td>
-                <td>{{element.risk_score}}</td>
-                <td>
-                    <button class="btn btn-danger"
-                            ng-click="deleteRisk('ip',element.id)">
-                        Delete
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <input type="text"
-                            class="form-control"
-                            ng-model="newIP"
-                            name="ip"/>
-                </td>
-                <td>
-                    <input type="number" class="form-control"
-                            ng-model="newIPRiskScore" name="riskScore"/>
-                </td>
-                <td>
-                    <button class="btn btn-default"
-                            ng-click="addIPRisk()">
-                        Add new IP risk score
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<h2>Thresholds</h2>
+<!-- <h2>Thresholds</h2>
 <div class="table-responsive">
     <table class="table table-bordered table-striped">
         <thead>
@@ -165,4 +65,4 @@
             </tr>
         </tbody>
     </table>
-</div>
+</div> -->

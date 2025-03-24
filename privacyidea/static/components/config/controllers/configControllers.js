@@ -506,19 +506,25 @@ myApp.controller("policyDetailsController", ["$scope", "$stateParams",
     }]);
 
 myApp.controller("riskController", ["$scope", "ConfigFactory",
-    "inform","gettextCatalog",
-    function($scope, ConfigFactory,inform,gettextCatalog) {
+    "inform","gettextCatalog","$location",
+    function($scope, ConfigFactory,inform,gettextCatalog,$location) {
         $scope.form = {};
         $scope.typesWithoutScore = []
+
+        if ($location.path() === "/config/risk") {
+            $location.path("/config/risk/user");
+        }
 
         $scope.loadRiskConfig = function() {
             ConfigFactory.loadRiskConfig(function(data) {
                 $scope.typesWithoutScore = []
                 $scope.form = data.result.value
                 $scope.typesWithoutScore = $scope.form["user_types"]
-                $scope.typesWithoutScore = $scope.form["user_types"].filter(userType =>
-                    !$scope.form["user_risk"].some(risk => risk.type === userType)
-                );
+                if($scope.hasDefinedUserRisks()) {
+                    $scope.typesWithoutScore = $scope.form["user_types"].filter(userType =>
+                        !$scope.form["user_risk"].some(risk => risk.type === userType)
+                    );
+                }
             });
         };
 
