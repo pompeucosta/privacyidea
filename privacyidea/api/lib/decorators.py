@@ -46,19 +46,19 @@ def add_serial_from_response_to_g(wrapped_function):
 
     return function_wrapper
 
-def add_risk_to_user(request,g):
+def add_risk_to_user(request):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args,**kwargs):
-            user = request.User
-            ip = g.client_ip
-            print(request.headers)
-            print(ip)
-            if user:
-                user.info["type"] = "Admin"
-                user.info["risk"] = calculate_risk(ip,None,user)
-                print(user.info["risk"])
-
+            try:
+                user = request.User
+                ip = request.headers.get("X-Forwarded-For",None) or g.client_ip
+                if user:
+                    user.info["type"] = "Admin"
+                    user.info["risk"] = calculate_risk(ip,None,user.info.get("type",None))
+                    print(user.info.get("risk","null"))
+            except Exception as e:
+                print(e)
             return func(*args,**kwargs)
         return wrapper
     
