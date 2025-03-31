@@ -245,7 +245,7 @@ def offlinerefill():
 @postpolicy(check_serial, request=request)
 @postpolicy(autoassign, request=request)
 @add_serial_from_response_to_g
-@add_risk_to_user(request,g)
+@add_risk_to_user(request)
 @prepolicy(check_application_tokentype, request=request)
 @prepolicy(pushtoken_validate, request=request)
 @prepolicy(set_realm, request=request)
