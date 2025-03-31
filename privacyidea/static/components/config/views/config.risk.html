@@ -4,6 +4,11 @@
             <ul class="nav nav-pills nav-stacked nav-capitalize">
                 <li role="presentation"
                     ng-show="checkRight('policyread')"
+                    ng-class="{ active: $state.includes('config.risk.test')}">
+                    <a ui-sref="config.risk.test" translate>
+                        Test risk</a></li>
+                <li role="presentation"
+                    ng-show="checkRight('policyread')"
                     ng-class="{ active: $state.includes('config.risk.user')}">
                     <a ui-sref="config.risk.user" translate>
                         User type</a></li>
@@ -11,7 +16,7 @@
                     ng-show="checkRight('policyread')"
                     ng-class="{ active: $state.includes('config.risk.service')}">
                     <a ui-sref="config.risk.service" translate>
-                        Service</a></li>
+                        User-Agent</a></li>
                 <li role="presentation"
                     ng-show="checkRight('policyread')"
                     ng-class="{ active: $state.includes('config.risk.ip')}">

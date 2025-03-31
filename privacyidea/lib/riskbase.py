@@ -1,14 +1,39 @@
 import ipaddress
 from privacyidea.lib.error import ParameterError
 from privacyidea.models import ServiceRiskScore, IPRiskScore,UserTypeRiskScore
-from privacyidea.lib.user import User
 
-def calculate_risk(ip,service,user_obj):
+def calculate_risk(ip,service,user_type):
     ip_risk_score = get_ip_risk_score(ip)
     service_risk_score = get_service_risk_score(service)
-    user_risk_score = get_user_risk_score(user_obj)
+    user_risk_score = get_user_risk_score(user_type)
 
     return user_risk_score + service_risk_score + ip_risk_score    
+
+def get_user_groups():
+    from ldap3 import Server,Connection,ALL
+    
+    ldap_server = "ldap://localhost"
+    ldap_user = "cn=admin,dc=example,dc=org"
+    ldap_password = "admin"
+    
+    server = Server(ldap_server,get_info=ALL)
+    connection = Connection(server,user=ldap_user,password=ldap_password)
+    
+    if not connection.bind():
+        print("failed to create connection")
+        raise Exception("failed to create connection")
+    
+    search_base = "ou=groups,dc=example,dc=org"
+    search_filter = "(objectClass=posixGroup)"
+    attr = ["cn"]
+    
+    connection.search(search_base,search_filter,attributes=attr)
+    group_names = [entry.cn.value for entry in connection.entries]
+    
+    connection.unbind()
+    
+    return group_names
+
 
 def get_ip_risk_score(ip):
     default = 1
@@ -52,13 +77,13 @@ def get_service_risk_score(service):
     service_risk_score = service_query.risk_score
     return service_risk_score
 
-def get_user_risk_score(user: User):
+def get_user_risk_score(utype):
     default = 1
     
-    if not user:
+    if not utype:
         return default
     
-    type_query = UserTypeRiskScore.query.filter_by(user_type=user.info.get("type",None)).first()
+    type_query = UserTypeRiskScore.query.filter_by(user_type=utype).first()
         
     #TODO: use the default user risk score if the query is empty
     if type_query == None:

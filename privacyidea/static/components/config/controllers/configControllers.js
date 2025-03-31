@@ -512,7 +512,7 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
         $scope.typesWithoutScore = []
 
         if ($location.path() === "/config/risk") {
-            $location.path("/config/risk/user");
+            $location.path("/config/risk/check");
         }
 
         $scope.loadRiskConfig = function() {
@@ -556,7 +556,7 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                 };
                 ConfigFactory.addRiskScore("service",param,function(data) {
                     if(data.result.status === true) {
-                        inform.add(gettextCatalog.getString("service risk added."),
+                        inform.add(gettextCatalog.getString("User-Agent risk added."),
                             {type: "info"});
                         $scope.newServiceName = ""
                         $scope.newServiceRiskScore = ""
@@ -619,6 +619,19 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                             {type: "info"});
                     $scope.loadRiskConfig();
                 }
+            })
+        }
+
+        $scope.testRisk = function() {
+            param = {
+                "user": $scope.userTest,
+                "service": $scope.serviceTest,
+                "ip": $scope.ipTest
+            }
+            ConfigFactory.testRisk(param,function(data) {
+                if(data.result.status === true)
+                    inform.add(gettextCatalog.getString("Calculated risk is " + data.result.value),
+                        {type: "info"});
             })
         }
 

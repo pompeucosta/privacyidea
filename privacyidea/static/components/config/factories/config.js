@@ -1040,6 +1040,18 @@ myApp.factory("ConfigFactory", ["AuthFactory", "$http", "$state", "$rootScope",
                     AuthFactory.authError(error.data)
                 });
             },
+            testRisk: function(params,callback) {
+                $http.post(riskUrl + "/check",params, {
+                    headers: {
+                        'PI-Authorization': AuthFactory.getAuthToken(),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(function(response) {
+                    callback(response.data)
+                }, function(error) {
+                    AuthFactory.authError(error.data)
+                });
+            },
             delThreshold: function(identifier,callback) {
                 $http.delete(riskUrl + "/threshold/" + identifier, {
                     headers: {

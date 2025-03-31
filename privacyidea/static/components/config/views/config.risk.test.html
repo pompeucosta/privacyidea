@@ -1,0 +1,24 @@
+<form>
+    <div class="form-group">
+        <label class="control-label">User type</label>
+        <select class="form-control"
+        ng-options="select for select in $parent.form['user_types']"
+        name="userRisk"
+        ng-model="$parent.userTest"></select>
+    </div>
+    <div class="form-group">
+        <label class="control-label">User-Agent</label>
+        <input type="text" class="form-control"
+        ng-model="$parent.serviceTest"
+        name="serviceRisk" />
+    </div>
+    <div class="form-group">
+        <label class="control-label">IP</label>
+        <input type="text" class="form-control"
+        ng-model="$parent.ipTest" name="ipRisk" />
+    </div>
+    <div class="text-center">
+        <button ng-click="testRisk()"
+                class="btn btn-primary" translate>Test</button>
+    </div>
+</form>
