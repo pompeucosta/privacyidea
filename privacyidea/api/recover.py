@@ -46,27 +46,17 @@ recover_blueprint = Blueprint('recover_blueprint', __name__)
 def get_recover_code():
     """
     This method requests a recover code for a user. The recover code it sent
-    via email or sms to the user.
+    via email to the user.
 
     :queryparam user: username of the user
     :queryparam realm: realm of the user
-    :queryparam email: email of the user (only if route is email)
-    :queryparam route: how to send the code (sms or email, default: sms)
+    :queryparam email: email of the user
     :return: JSON with value=True or value=False
     """
     param = request.all_data
     user_obj = get_user_from_param(param, required)
-    route = getParam(param,"route")
-    if not route:
-        route = "sms"
-        
-    r = False
-    
-    if route == "email":
-        email = getParam(param, "email", required)
-        r = create_recoverycode(user_obj, email, base_url=request.base_url)
-    elif route == "sms":
-        r = create_sms_recoverycode(user_obj)
+    email = getParam(param, "email", required)
+    r = create_recoverycode(user_obj, email, base_url=request.base_url)
     g.audit_object.log({"success": r,
                         "info": "{0!s}".format(user_obj)})
     return send_result(r)
@@ -94,4 +84,26 @@ def reset_password():
         r = user_obj.update_user_info({"password": password})
         g.audit_object.log({"success": r,
                             "info": "{0!s}".format(user_obj)})
+    return send_result(r)
+
+@recover_blueprint.route("/sms",methods=["POST"])
+@prepolicy(check_anonymous_user, request, action=ACTION.PASSWORDRESET)
+def recover_with_sms():
+    param = request.all_data
+    user_obj = get_user_from_param(param, required)
+    r = create_sms_recoverycode(user_obj)
+    g.audit_object.log({"success": r,
+                        "info": "{0!s}".format(user_obj)})
+    return send_result(r)
+
+@recover_blueprint.route("/sms/validate",methods=["POST"])
+@prepolicy(check_anonymous_user, request, action=ACTION.PASSWORDRESET)
+def validate_sms_code():
+    param = request.all_data
+    user_obj = get_user_from_param(param,required)
+    code = getParam(request.all_data, "recoverycode", required)
+    r = check_recoverycode(user_obj, code)
+    g.audit_object.log({"success": r,
+                            "info": "{0!s}".format(user_obj)})
+    
     return send_result(r)
