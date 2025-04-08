@@ -980,18 +980,6 @@ myApp.factory("ConfigFactory", ["AuthFactory", "$http", "$state", "$rootScope",
                     AuthFactory.authError(error.data)
                 });
             },
-            // getUserTypes: function(callback) {
-            //     $http.get(riskUrl + "/user_types", {
-            //         headers: {
-            //             'PI-Authorization': AuthFactory.getAuthToken(),
-            //             'Content-Type': 'application/json'
-            //         }
-            //     }).then(function (response) {
-            //         callback(response.data)
-            //     }, function(error) {
-            //         AuthFactory.authError(error.data)
-            //     });
-            // },
             loadRiskConfig: function(callback) {
                 $http.get(riskUrl + "/", {
                     headers: {
@@ -1028,18 +1016,6 @@ myApp.factory("ConfigFactory", ["AuthFactory", "$http", "$state", "$rootScope",
                     AuthFactory.authError(error.data)
                 });
             },
-            addThreshold: function(params,callback) {
-                $http.post(riskUrl + "/threshold",params, {
-                    headers: {
-                        'PI-Authorization': AuthFactory.getAuthToken(),
-                        'Content-Type': 'application/json'
-                    }
-                }).then(function(response) {
-                    callback(response.data)
-                }, function(error) {
-                    AuthFactory.authError(error.data)
-                });
-            },
             testRisk: function(params,callback) {
                 $http.post(riskUrl + "/check",params, {
                     headers: {
@@ -1052,8 +1028,8 @@ myApp.factory("ConfigFactory", ["AuthFactory", "$http", "$state", "$rootScope",
                     AuthFactory.authError(error.data)
                 });
             },
-            delThreshold: function(identifier,callback) {
-                $http.delete(riskUrl + "/threshold/" + identifier, {
+            saveGroupResolver: function(params,callback) {
+                $http.post(riskUrl + "/groups",params, {
                     headers: {
                         'PI-Authorization': AuthFactory.getAuthToken(),
                         'Content-Type': 'application/json'
@@ -1063,6 +1039,18 @@ myApp.factory("ConfigFactory", ["AuthFactory", "$http", "$state", "$rootScope",
                 }, function(error) {
                     AuthFactory.authError(error.data)
                 });
+            },
+            testGroupResolver: function(params,callback) {
+                $http.post(riskUrl + "/groups/test", params, {
+                    headers: {
+                        'PI-Authorization': AuthFactory.getAuthToken(),
+                        'Content-Type': 'application/json'
+                    }
+                }).then(function(response) {
+                    callback(response.data)
+                }, function(error) {
+                    AuthFactory.authError(error.data)
+                })
             }
         };
     }]);

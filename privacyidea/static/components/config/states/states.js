@@ -387,5 +387,9 @@ angular.module('privacyideaApp.configStates', ['ui.router', 'privacyideaApp.vers
                     url: "/check",
                     templateUrl: configpath + "config.risk.test.html" + versioningSuffixProviderProvider.$get().$get()
                 })
+                .state('config.risk.groups', {
+                    url: "/groups",
+                    templateUrl: configpath + "config.risk.group.html" + versioningSuffixProviderProvider.$get().$get()
+                })
             ;
         }]);

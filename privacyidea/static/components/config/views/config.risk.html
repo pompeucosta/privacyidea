@@ -23,51 +23,14 @@
                     <a ui-sref="config.risk.ip" translate>
                         IP</a></li>
                 </li>
+                <li role="presentation"
+                    ng-show="checkRight('policyread')"
+                    ng-class="{ active: $state.includes('config.risk.groups')}">
+                    <a ui-sref="config.risk.groups" translate>
+                        Groups</a></li>
+                </li>
             </ul>
         </div>
     </div>
     <div ui-view class="col-lg-9 slide panel"></div>
 </div>
-
-<!-- <h2>Thresholds</h2>
-<div class="table-responsive">
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Token</th>
-                <th>Threshold required</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="element in form['thresholds'] | orderBy : 'threshold'"
-            ng-show="hasDefinedThresholds()">
-                <td>{{element.token}}</td>
-                <td>{{element.threshold}}</td>
-                <td>
-                    <button class="btn btn-danger"
-                            ng-click="deleteThreshold(element.id)">
-                        Delete
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td>
-                    <select class="form-control"
-                        ng-model="newThresholdToken" name="thresholdToken"
-                        ng-options="select for select in form['token_types']">
-                    </select>
-                </td>
-                <td>
-                    <input type="number" class="form-control"
-                           ng-model="newThresholdValue" name="thresholdValue" />
-                </td>
-                <td>
-                    <button class="btn btn-default"
-                            ng-click="addThreshold()">
-                        Add new Threshold
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div> -->

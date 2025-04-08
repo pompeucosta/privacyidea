@@ -519,6 +519,9 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
             ConfigFactory.loadRiskConfig(function(data) {
                 $scope.typesWithoutScore = []
                 $scope.form = data.result.value
+                $scope.resolvername = $scope.form["groupResolver"]
+                $scope.userGroupDN = $scope.form["userGroupDN"]
+                $scope.userGroupAttr = $scope.form["userGroupAttr"]
                 $scope.typesWithoutScore = $scope.form["user_types"]
                 if($scope.hasDefinedUserRisks()) {
                     $scope.typesWithoutScore = $scope.form["user_types"].filter(userType =>
@@ -536,7 +539,7 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                 };
                 ConfigFactory.addRiskScore("user",params, function(data) {
                     if (data.result.status === true) {
-                        inform.add(gettextCatalog.getString("user risk added."),
+                        inform.add(gettextCatalog.getString("User risk added."),
                             {type: "info"});
                         $scope.newUserType = ""
                         $scope.newUserRiskScore = ""
@@ -546,8 +549,6 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
             }
         };
 
-        
-
         $scope.addServiceRisk = function() {
             if ($scope.newServiceName && $scope.newServiceRiskScore) {
                 param = {
@@ -556,7 +557,7 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                 };
                 ConfigFactory.addRiskScore("service",param,function(data) {
                     if(data.result.status === true) {
-                        inform.add(gettextCatalog.getString("User-Agent risk added."),
+                        inform.add(gettextCatalog.getString("Service risk added."),
                             {type: "info"});
                         $scope.newServiceName = ""
                         $scope.newServiceRiskScore = ""
@@ -584,24 +585,6 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
             }
         };
 
-        $scope.addThreshold = function() {
-            if($scope.newThresholdToken && $scope.newThresholdValue) {
-                param = {
-                    "token": $scope.newThresholdToken,
-                    "threshold": $scope.newThresholdValue
-                }
-                ConfigFactory.addThreshold(param, function(data) {
-                    if(data.result.status === true) {
-                        inform.add(gettextCatalog.getString("IP risk added."),
-                            {type: "info"});
-                        $scope.newThresholdToken = ""
-                        $scope.newThresholdValue = ""
-                        $scope.loadRiskConfig();
-                    }
-                })
-            }
-        };
-
         $scope.deleteRisk = function(type,key) {
             ConfigFactory.delRiskScore(type,key, function(data) {
                 if(data.result.status === true) {
@@ -611,16 +594,6 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                 }
             })
         };
-
-        $scope.deleteThreshold = function(identifier) {
-            ConfigFactory.delThreshold(identifier, function(data) {
-                if(data.result.status === true) {
-                    inform.add(gettextCatalog.getString("threshold for " + identifier + " deleted."),
-                            {type: "info"});
-                    $scope.loadRiskConfig();
-                }
-            })
-        }
 
         $scope.testRisk = function() {
             param = {
@@ -633,6 +606,61 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                     inform.add(gettextCatalog.getString("Calculated risk is " + data.result.value),
                         {type: "info"});
             })
+        }
+
+        $scope.testGroupResolver = function() {
+            if(!$scope.resolvername) {
+                inform.add(gettextCatalog.getString("Please provide the resolver name"),
+                    {type: "danger"});
+                return;
+            }
+
+            if(!$scope.userDN) {
+                inform.add(gettextCatalog.getString("Please provide the user DN for testing"), {type: "danger"});
+                return;
+            }
+
+            param = {
+                "resolver_name": $scope.resolvername,
+                "user_dn": $scope.userDN
+            }
+
+            //set optional parameters if they are defined
+            if($scope.userGroupDN)
+                param["user_to_group_dn"] = $scope.userGroupDN
+
+            if($scope.userGroupAttr)
+                param["user_to_group_search_attr"] = $scope.userGroupAttr
+
+            ConfigFactory.testGroupResolver(param,function(data) {
+                if(data.result.status === true) {
+                    inform.add(data.detail.description, {type: "success"});
+                    console.log(data.result.value);
+                }
+                else {
+                    inform.add(data.detail.description, {type: "danger"})
+                }
+
+            })
+        }
+
+        $scope.saveResolver = function() {
+            if($scope.resolvername) {
+                param = {
+                    "resolver_name": $scope.resolvername
+                }
+
+                if($scope.userGroupDN)
+                    param["user_to_group_dn"] = userGroupDN
+
+                if($scope.userGroupAttr)
+                    param["user_to_group_search_attr"] = $scope.userGroupAttr
+
+                ConfigFactory.saveGroupResolver(param,function(data) {
+                    if(data.result.status === true)
+                        inform.add("Saved successfuly", {type: "success"});
+                })
+            }
         }
 
         $scope.hasDefinedValues = function(key) {
