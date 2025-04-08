@@ -1,6 +1,21 @@
 import ipaddress
+import logging
 from privacyidea.lib.error import ParameterError
+from privacyidea.lib.resolver import get_resolver_object
+from privacyidea.lib.resolvers.LDAPIdResolver import IdResolver
 from privacyidea.models import ServiceRiskScore, IPRiskScore,UserTypeRiskScore
+from privacyidea.lib.config import get_from_config
+
+DEFAULT_USER_RISK = 3
+DEFAULT_IP_RISK = 1
+DEFAULT_SERVICE_RISK = 5
+
+LDAP_USER_GROUP_DN_STR = "ldap_user_group_base_dn"
+LDAP_USER_GROUP_SEARCH_ATTR_STR = "ldap_user_group_search_attr"
+LDAP_GROUP_RESOLVER_NAME_STR = "resolver_name"
+
+
+log = logging.getLogger(__name__) 
 
 def calculate_risk(ip,service,user_type):
     ip_risk_score = get_ip_risk_score(ip)
@@ -9,34 +24,58 @@ def calculate_risk(ip,service,user_type):
 
     return user_risk_score + service_risk_score + ip_risk_score    
 
-def get_user_groups():
-    from ldap3 import Server,Connection,ALL
+def get_groups():
+    resolver = _get_group_resolver()
+    if not resolver:
+        return []
     
-    ldap_server = "ldap://localhost"
-    ldap_user = "cn=admin,dc=example,dc=org"
-    ldap_password = "admin"
+    _groups = resolver.getUserList({})
+    groups = set()
     
-    server = Server(ldap_server,get_info=ALL)
-    connection = Connection(server,user=ldap_user,password=ldap_password)
+    for entry in _groups:
+        groups.add(entry["username"])
     
-    if not connection.bind():
-        print("failed to create connection")
-        raise Exception("failed to create connection")
-    
-    search_base = "ou=groups,dc=example,dc=org"
-    search_filter = "(objectClass=posixGroup)"
-    attr = ["cn"]
-    
-    connection.search(search_base,search_filter,attributes=attr)
-    group_names = [entry.cn.value for entry in connection.entries]
-    
-    connection.unbind()
-    
-    return group_names
+    return list(groups)
 
+def get_user_groups(user_dn,resolver_name=None,dn=None,attr=None):
+    resolver = _get_group_resolver(resolver_name)
+    if not resolver:
+        return []
+
+    base = dn or get_from_config(LDAP_USER_GROUP_DN_STR) or resolver.basedn
+    search_attr = attr or get_from_config(LDAP_USER_GROUP_SEARCH_ATTR_STR) or "member"
+    search_filter = f"({search_attr}={user_dn})"
+    entries = resolver._search(base,search_filter,resolver.loginname_attribute)
+    
+    if len(entries) == 0:
+        log.info(f"Found 0 entries for group search. Base: {base}. Attr: {search_attr}. Filter: {search_filter}")
+        return []
+    
+    groups = set()
+    for entry in entries:
+        attrs = entry.get("attributes", {})
+        for loginname in resolver.loginname_attribute:
+            name = attrs.get(loginname,"")
+            if name:
+                groups.update(name)
+    
+    return list(groups)
+
+def _get_group_resolver(resolver_name=None):
+    rname = resolver_name or get_from_config(LDAP_GROUP_RESOLVER_NAME_STR)
+    if not rname:
+        log.info("Name for group resolver not set. User group can not be fetched.")
+        return None
+    
+    resolver: IdResolver = get_resolver_object(rname)
+    
+    if not resolver:
+        log.error("Can not find resolver with name {0!s}!",rname)
+        
+    return resolver
 
 def get_ip_risk_score(ip):
-    default = 1
+    default = get_from_config("DefaultIPRiskScore") or DEFAULT_IP_RISK
     
     if not ip:
         return default
@@ -46,7 +85,6 @@ def get_ip_risk_score(ip):
     ip_type = IPRiskScore.PUBLIC if addr.is_global else IPRiskScore.PRIVATE
     subnets = IPRiskScore.query.filter_by(ip_version=version,ip_type=ip_type).all()
 
-    #TODO: use the default ip risk score if the query is empty
     if subnets == None:
         return default
     
@@ -55,7 +93,6 @@ def get_ip_risk_score(ip):
     subnets = [subn for subn in subnets if matches_subnet(ip,subn)]
 
     if len(subnets) == 0:
-        #TODO: use the default ip risk score
         return default
     
     subnet_highest_mask = get_subnet_with_highest_mask(subnets)
@@ -64,13 +101,13 @@ def get_ip_risk_score(ip):
     return ip_risk_score
 
 def get_service_risk_score(service):
-    default = 1
+    default = get_from_config("DefaultServiceRiskScore") or DEFAULT_SERVICE_RISK 
+    
     if not service:
         return default
     
     service_query = ServiceRiskScore.query.filter_by(service_name=service).first()
         
-    #TODO: use the default service risk score if the query is empty
     if service_query == None:
         return default
     
@@ -78,14 +115,13 @@ def get_service_risk_score(service):
     return service_risk_score
 
 def get_user_risk_score(utype):
-    default = 1
+    default = get_from_config("DefaultUserRiskScore") or DEFAULT_USER_RISK
     
     if not utype:
         return default
     
     type_query = UserTypeRiskScore.query.filter_by(user_type=utype).first()
         
-    #TODO: use the default user risk score if the query is empty
     if type_query == None:
         return default
         
