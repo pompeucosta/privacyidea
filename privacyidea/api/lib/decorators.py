@@ -25,7 +25,8 @@ The postAddSerialToG decorator is tested in the ValidateAPITestCase.
 import logging
 from flask import g
 import functools
-from privacyidea.lib.riskbase import calculate_risk
+from privacyidea.lib.resolver import get_resolver_type
+from privacyidea.lib.riskbase import calculate_risk,get_user_groups
 
 log = logging.getLogger(__name__)
 
@@ -47,18 +48,44 @@ def add_serial_from_response_to_g(wrapped_function):
     return function_wrapper
 
 def add_risk_to_user(request):
+    """
+    This decorator calculates and attachs the risk score to the user object, if available. It retrieves
+    the IP and the service from the headers of the request, X-Forwarded-For and ServiceID respectivelly.
+    """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args,**kwargs):
             try:
                 user = request.User
-                ip = request.headers.get("X-Forwarded-For",None) or g.client_ip
                 if user:
-                    user.info["type"] = "Admin"
-                    user.info["risk"] = calculate_risk(ip,None,user.info.get("type",None))
-                    print(user.info.get("risk","null"))
+                    resolver = get_resolver_type(user.resolver)
+                    if resolver == "ldapresolver":
+                        ip: str = request.headers.get("X-Forwarded-For",None)
+                        if not ip:
+                            log.debug("No IP found in headers. Using the IP of the request...")
+                            ip = g.client_ip
+                        else:
+                            ips = ip.split(",")
+                            ip = ips[0]
+                        ip = ip.strip()
+                            
+                        service = request.headers.get("ServiceID",None)
+                        if not service:
+                            log.debug("No service provided. Using the User-Agent...")
+                            service = request.user_agent
+                        
+                        utype = get_user_groups(user.uid)
+                        if len(utype) == 0:
+                            utype = None
+                            
+                        user.info["risk"] = calculate_risk(ip,service,utype)
+                        log.debug(f"Risk for user {str(user.uid)}: {str(user.info.get("risk","null"))}")
+                    else:
+                        log.warning(f"User {user.login} does not belong to an LDAP resolver. Risk can only be applied to LDAP users.")
+                else:
+                    log.debug("User not available on request. Skiping risk score.")
             except Exception as e:
-                print(e)
+                log.error(f"Can't calculate the risk score: {e}")
             return func(*args,**kwargs)
         return wrapper
     

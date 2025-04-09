@@ -17,7 +17,7 @@ LDAP_GROUP_RESOLVER_NAME_STR = "resolver_name"
 
 log = logging.getLogger(__name__) 
 
-def calculate_risk(ip,service,user_type):
+def calculate_risk(ip: str,service: str,user_type: list):
     ip_risk_score = get_ip_risk_score(ip)
     service_risk_score = get_service_risk_score(service)
     user_risk_score = get_user_risk_score(user_type)
@@ -48,7 +48,7 @@ def get_user_groups(user_dn,resolver_name=None,dn=None,attr=None):
     entries = resolver._search(base,search_filter,resolver.loginname_attribute)
     
     if len(entries) == 0:
-        log.info(f"Found 0 entries for group search. Base: {base}. Attr: {search_attr}. Filter: {search_filter}")
+        log.debug(f"Found 0 entries for group search. Base: {base}. Attr: {search_attr}. Filter: {search_filter}")
         return []
     
     groups = set()
@@ -59,6 +59,7 @@ def get_user_groups(user_dn,resolver_name=None,dn=None,attr=None):
             if name:
                 groups.update(name)
     
+    log.debug(f"Found groups: {list(groups)}")
     return list(groups)
 
 def _get_group_resolver(resolver_name=None):
@@ -74,7 +75,7 @@ def _get_group_resolver(resolver_name=None):
         
     return resolver
 
-def get_ip_risk_score(ip):
+def get_ip_risk_score(ip: str):
     default = get_from_config("DefaultIPRiskScore") or DEFAULT_IP_RISK
     
     if not ip:
@@ -100,7 +101,7 @@ def get_ip_risk_score(ip):
     ip_risk_score = IPRiskScore.query.filter_by(ip=str(subnet_highest_mask.network_address),mask=subnet_highest_mask.prefixlen).first().risk_score
     return ip_risk_score
 
-def get_service_risk_score(service):
+def get_service_risk_score(service: str):
     default = get_from_config("DefaultServiceRiskScore") or DEFAULT_SERVICE_RISK 
     
     if not service:
@@ -114,18 +115,27 @@ def get_service_risk_score(service):
     service_risk_score = service_query.risk_score
     return service_risk_score
 
-def get_user_risk_score(utype):
+def get_user_risk_score(utype: list):
     default = get_from_config("DefaultUserRiskScore") or DEFAULT_USER_RISK
     
     if not utype:
         return default
     
-    type_query = UserTypeRiskScore.query.filter_by(user_type=utype).first()
-        
-    if type_query == None:
+    types = []
+    for t in utype:
+        tmp = UserTypeRiskScore.query.filter_by(user_type=t).first()
+        if tmp:
+            types.append((t,tmp.risk_score)) 
+            
+    if len(types) == 0:
+        log.debug(f"No risk scores found for groups {utype}")
         return default
         
-    user_risk_score = type_query.risk_score
+    scores = sorted(types,key=lambda tp: tp[1])
+    log.debug(f"Scores: {scores}")
+    
+    log.debug(f"Using score defined for type {scores[-1][0]}: {scores[-1][1]}")
+    user_risk_score = scores[-1][1]
         
     return user_risk_score
        
