@@ -16,6 +16,24 @@ riskbase_blueprint = Blueprint('riskbase_blueprint', __name__)
 @admin_required
 def get_risk_config():
     """
+    Retrieves all information related to the risk-base page:
+    
+    user_groups - all groups of users
+    
+    token_types- all token types that privacyIDEA has
+    
+    group_resolver - the base ldap resolver that is used to search for user groups
+    
+    user_group_dn - the base LDAP DN that is used to search the group that a user belongs to
+    
+    user_group_attr - The name of the LDAP attribute that, along with the user DN, is used to fetch the groups 
+    the user belongs to. Used in the search filter.
+    
+    user_risk - the user types and their defined risk scores
+    
+    service_risk - the services and their defined risk scores
+    
+    ip_risk - the ips and their defined risk scores 
     """
     users = UserTypeRiskScore.query.all()
     services = ServiceRiskScore.query.all()
@@ -23,20 +41,20 @@ def get_risk_config():
 
     r = {}
     
-    r["user_types"] = get_groups()
+    r["user_groups"] = get_groups()
     r["token_types"] = get_token_types()
     
     resolver = get_from_config(LDAP_GROUP_RESOLVER_NAME_STR)
     if resolver:
-        r["groupResolver"] = resolver
+        r["group_resolver"] = resolver
         
     userGroupDN = get_from_config(LDAP_USER_GROUP_DN_STR)
     if userGroupDN:
-        r["userGroupDN"] = userGroupDN
+        r["user_group_dn"] = userGroupDN
         
     userGroupAttr = get_from_config(LDAP_USER_GROUP_SEARCH_ATTR_STR)
     if userGroupAttr:
-        r["userGroupAttr"] = userGroupAttr
+        r["user_group_attr"] = userGroupAttr
     
     if len(users) > 0:
         r["user_risk"] = [{"id": entry.id,"type": entry.user_type, "risk_score": entry.risk_score} for entry in users]
@@ -52,6 +70,14 @@ def get_risk_config():
 @riskbase_blueprint.route("/groups",methods=["POST"])
 @admin_required
 def group_connection_config():
+    """
+    Sets the config parameters for the group search
+    
+    :jsonparam resolver_name: The name of the base LDAP resolver to be used
+    :jsonparam user_to_group_search_attr: The name of the LDAP attribute that, along with the user DN, is used to fetch the groups 
+    the user belongs to. Used in the search filter.
+    :jsonparam user_to_group_dn: The base LDAP DN to use when searching for the group that a user belongs to
+    """
     params = request.all_data
     resolver_name = getParam(params,"resolver_name",required,allow_empty=False)
     user_to_group_search_attr = getParam(params,"user_to_group_search_attr",allow_empty=False)
@@ -67,8 +93,17 @@ def group_connection_config():
     return send_result(True)
 
 @riskbase_blueprint.route("/groups/test",methods=["POST"])
-# @admin_required
+@admin_required
 def test_fetch_user_group():
+    """
+    Tests the group search configuration.
+    
+    Parameters are the same as the /groups endpoint.
+    
+    :jsonparam user_dn: LDAP DN of a user to test the group search.
+    
+    :return: JSON with the groups found.
+    """
     params = request.all_data
     resolver_name = getParam(params,"resolver_name",required,allow_empty=False)
     user_dn = getParam(params,"user_dn",allow_empty=False)
@@ -87,6 +122,17 @@ def test_fetch_user_group():
 @riskbase_blueprint.route("/check",methods=["POST"])
 @admin_required
 def check():
+    """
+    Calculates the risk score based on the provided user, service and IP.
+    
+    Used for testing the configuration.
+    
+    :jsonparam user: the user group that is used to calculate the risk for the test
+    :jsonparam service: the service that is used to calculate the risk for the test
+    :jsonparam ip: the IP that is used to calculate the risk for the test
+    
+    :return: JSON with risk score calculated
+    """
     params = request.all_data
     userType = getParam(params,"user")
     service = getParam(params,"service")
@@ -102,10 +148,14 @@ def check():
 @admin_required
 def set_user_risk():
     """
+    Sets the risk score for a group of users
+    
+    :jsonparam user_group: the group to which the risk score will be attached
+    :jsonparam risk_score: the risk score for the user group
     """
     
     param = request.all_data
-    user_type = getParam(param,"user_type",required)
+    user_type = getParam(param,"user_group",required)
     score = getParam(param,"risk_score",required)
     
     score = sanitize_risk_score(score)
@@ -120,6 +170,10 @@ def set_user_risk():
 @admin_required
 def set_service_risk():
     """
+    Sets the risk score for a service
+    
+    :jsonparam service: the service to which the risk score will be attached
+    :jsonparam risk_score: the risk score for the service
     """
     param = request.all_data
     service = getParam(param,"service",required)
@@ -137,9 +191,8 @@ def set_ip_risk():
     """
     Set the risk score for an IP or subnet
     
-    :queryparam ip: the ip address
-    :queryparam riskscore: the risk score to be attached to the IP
-    :return:
+    :jsonparam ip: the ip or subnet address
+    :jsonparam riskscore: the risk score for the subnet or IP
     """
     param = request.all_data
     ip: str = getParam(param,"ip",required,allow_empty=False)
@@ -171,6 +224,11 @@ def set_ip_risk():
 @riskbase_blueprint.route("/user/<identifier>",methods=["DELETE"])
 @admin_required
 def delete_user_risk(identifier):
+    """
+    Deletes the risk score attached to the user group
+    
+    :queryparam identifier: the name of the group
+    """
     identifier = int(identifier)
     
     ur = UserTypeRiskScore.query.filter_by(id=identifier).first()
@@ -185,6 +243,11 @@ def delete_user_risk(identifier):
 @riskbase_blueprint.route("/service/<identifier>",methods=["DELETE"])
 @admin_required
 def delete_service_risk(identifier):
+    """
+    Deletes the risk score attached to the service
+    
+    :queryparam identifier: the name of the service
+    """
     identifier = int(identifier)
     
     sr = ServiceRiskScore.query.filter_by(id=identifier).first()
@@ -199,6 +262,11 @@ def delete_service_risk(identifier):
 @riskbase_blueprint.route("/ip/<identifier>",methods=["DELETE"])
 @admin_required
 def delete_ip_risk(identifier):
+    """
+    Deletes the risk score attached to the IP or subnet
+    
+    :queryparam identifier: the IP or subnet
+    """
     identifier = int(identifier)
     
     ip = IPRiskScore.query.filter_by(id=identifier).first()

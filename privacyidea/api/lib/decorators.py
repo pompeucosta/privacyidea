@@ -51,6 +51,8 @@ def add_risk_to_user(request):
     """
     This decorator calculates and attachs the risk score to the user object, if available. It retrieves
     the IP and the service from the headers of the request, X-Forwarded-For and ServiceID respectivelly.
+    If the IP is not found in the headers, then the IP of the request is used. For the service, the 
+    User-Agent is used instead.
     """
     def decorator(func):
         @functools.wraps(func)

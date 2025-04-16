@@ -17,14 +17,30 @@ LDAP_GROUP_RESOLVER_NAME_STR = "resolver_name"
 
 log = logging.getLogger(__name__) 
 
-def calculate_risk(ip: str,service: str,user_type: list):
+def calculate_risk(ip: str,service: str,user_groups: list):
+    """Calculates the risk score based on the IP, service and user group.
+    If the value of the parameter does not have a defined risk score, the default risk score is used instead.
+
+    Args:
+        ip (str): the IP
+        service (str): the service name
+        user_groups (list): the list of groups the user belongs to
+
+    Returns:
+        float: the risk score
+    """
     ip_risk_score = get_ip_risk_score(ip)
     service_risk_score = get_service_risk_score(service)
-    user_risk_score = get_user_risk_score(user_type)
+    user_risk_score = get_user_risk_score(user_groups)
 
     return user_risk_score + service_risk_score + ip_risk_score    
 
 def get_groups():
+    """Retrieves all groups using the group configuration
+
+    Returns:
+        list: the groups retrieved
+    """
     resolver = _get_group_resolver()
     if not resolver:
         return []
@@ -38,6 +54,17 @@ def get_groups():
     return list(groups)
 
 def get_user_groups(user_dn,resolver_name=None,dn=None,attr=None):
+    """Retrieves the groups that the user belongs to
+
+    Args:
+        user_dn (str): the DN of the user
+        resolver_name (str, optional): the name of the base resolver used to fetch groups. Used for testing the group configuration. Defaults to None.
+        dn (str, optional): the base DN used to fetch the groups the user belongs to. Used for testing the group configuration. Defaults to None.
+        attr (str, optional): the search attribute, used in the search filter, that, along with the user DN, is used to fetch the groups of the user. Used for testing the group configuration. Defaults to None.
+
+    Returns:
+        list: the groups retrieved
+    """
     resolver = _get_group_resolver(resolver_name)
     if not resolver:
         return []
@@ -76,6 +103,15 @@ def _get_group_resolver(resolver_name=None):
     return resolver
 
 def get_ip_risk_score(ip: str):
+    """Retrieves the risk score for the IP
+
+    Args:
+        ip (str): the IP address
+
+    Returns:
+        float: the risk score defined for the IP. If the IP does not have a risk score defined, then the subnet with the highest network mask
+        to which the IP is part of is returned. If there is no subnet that covers the IP then the default IP risk score is returned.
+    """
     default = get_from_config("DefaultIPRiskScore") or DEFAULT_IP_RISK
     
     if not ip:
@@ -90,18 +126,27 @@ def get_ip_risk_score(ip: str):
         return default
     
     #get all subnets that hold the ip
-    subnets = [create_subnet(subnet.ip,subnet.mask) for subnet in subnets]
-    subnets = [subn for subn in subnets if matches_subnet(ip,subn)]
+    subnets = [_create_subnet(subnet.ip,subnet.mask) for subnet in subnets]
+    subnets = [subn for subn in subnets if _matches_subnet(ip,subn)]
 
     if len(subnets) == 0:
         return default
     
-    subnet_highest_mask = get_subnet_with_highest_mask(subnets)
+    subnet_highest_mask = _get_subnet_with_highest_mask(subnets)
     #fetch the risk score for the subnet
     ip_risk_score = IPRiskScore.query.filter_by(ip=str(subnet_highest_mask.network_address),mask=subnet_highest_mask.prefixlen).first().risk_score
     return ip_risk_score
 
 def get_service_risk_score(service: str):
+    """Retrieves the risk score for the service
+
+    Args:
+        service (str): the service name
+
+    Returns:
+        float: the risk score defined for the service. If the service does not have a risk score defined, then
+        the default service risk score is returned.
+    """
     default = get_from_config("DefaultServiceRiskScore") or DEFAULT_SERVICE_RISK 
     
     if not service:
@@ -115,42 +160,52 @@ def get_service_risk_score(service: str):
     service_risk_score = service_query.risk_score
     return service_risk_score
 
-def get_user_risk_score(utype: list):
+def get_user_risk_score(ugroups: list):
+    """Retrieves the highest risk score of the groups 
+
+    Args:
+        ugroups (list): the groups of the user
+
+    Returns:
+        float: the highest risk score from all of the risk scores of the groups 
+    """
     default = get_from_config("DefaultUserRiskScore") or DEFAULT_USER_RISK
     
-    if not utype:
+    if not ugroups:
         return default
     
-    types = []
-    for t in utype:
+    groups = []
+    for t in ugroups:
         tmp = UserTypeRiskScore.query.filter_by(user_type=t).first()
         if tmp:
-            types.append((t,tmp.risk_score)) 
+            groups.append((t,tmp.risk_score)) 
             
-    if len(types) == 0:
-        log.debug(f"No risk scores found for groups {utype}")
+    if len(groups) == 0:
+        log.debug(f"No risk scores found for groups {ugroups}")
         return default
         
-    scores = sorted(types,key=lambda tp: tp[1])
+    # sorts in ascending order, based on the risk score
+    scores = sorted(groups,key=lambda tp: tp[1])
     log.debug(f"Scores: {scores}")
     
     log.debug(f"Using score defined for type {scores[-1][0]}: {scores[-1][1]}")
+    # fetch the highest risk score
     user_risk_score = scores[-1][1]
         
     return user_risk_score
        
 
 def sanitize_risk_score(risk_score):
-    """Sanitizes the risk score. Checks if it's a number.
+    """Checks if the risk score is a positive number.
 
     Args:
         risk_score (Any): the risk score to be sanitized
 
     Raises:
-        ParameterError: if risk score is not a number
+        ParameterError: if risk score is not a number or if its a negative number
 
     Returns:
-        float: the sanitized risk score.
+        float: the risk score
     """
     try:
         risk_score = float(risk_score)
@@ -176,10 +231,10 @@ def ip_version(subnet):
 def _ip_to_int(ip):
     return int(ipaddress.ip_address(ip))
 
-def create_subnet(ip,mask):
+def _create_subnet(ip,mask):
     return ipaddress.ip_network(f"{ip}/{mask}")
 
-def matches_subnet(ip, subnet):
+def _matches_subnet(ip, subnet):
     ip_int = _ip_to_int(ip)
     network_int = _ip_to_int(subnet.network_address)
     netmask_int = _ip_to_int(subnet.netmask)
@@ -187,5 +242,5 @@ def matches_subnet(ip, subnet):
     # Apply bitwise AND to the IP and the subnet mask, then compare to the network address
     return (ip_int & netmask_int) == (network_int & netmask_int)
 
-def get_subnet_with_highest_mask(subnets):
+def _get_subnet_with_highest_mask(subnets):
     return max(subnets,key=lambda subnet: _ip_to_int(subnet.network_address))
