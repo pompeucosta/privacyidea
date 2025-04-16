@@ -519,12 +519,12 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
             ConfigFactory.loadRiskConfig(function(data) {
                 $scope.typesWithoutScore = []
                 $scope.form = data.result.value
-                $scope.resolvername = $scope.form["groupResolver"]
-                $scope.userGroupDN = $scope.form["userGroupDN"]
-                $scope.userGroupAttr = $scope.form["userGroupAttr"]
-                $scope.typesWithoutScore = $scope.form["user_types"]
+                $scope.resolvername = $scope.form["group_resolver"]
+                $scope.userGroupDN = $scope.form["user_group_dn"]
+                $scope.userGroupAttr = $scope.form["user_group_attr"]
+                $scope.typesWithoutScore = $scope.form["user_groups"]
                 if($scope.hasDefinedUserRisks()) {
-                    $scope.typesWithoutScore = $scope.form["user_types"].filter(userType =>
+                    $scope.typesWithoutScore = $scope.form["user_groups"].filter(userType =>
                         !$scope.form["user_risk"].some(risk => risk.type === userType)
                     );
                 }
@@ -534,7 +534,7 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
         $scope.addUserRisk = function() {
             if ($scope.newUserType && $scope.newUserRiskScore) {
                 params = {
-                    "user_type": $scope.newUserType,
+                    "user_group": $scope.newUserType,
                     "risk_score": $scope.newUserRiskScore
                 };
                 ConfigFactory.addRiskScore("user",params, function(data) {
@@ -681,10 +681,6 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
 
         $scope.hasDefinedIPRisks = function() {
             return $scope.hasDefinedValues("ip_risk");
-        }
-
-        $scope.hasDefinedThresholds = function() {
-            return $scope.hasDefinedValues("thresholds");
         }
 
         $scope.loadRiskConfig();
