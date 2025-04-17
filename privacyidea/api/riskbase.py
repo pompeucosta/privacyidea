@@ -138,7 +138,7 @@ def check():
     service = getParam(params,"service")
     ip = getParam(params,"ip")
     
-    r = calculate_risk(ip,service,userType)
+    r = calculate_risk(ip,service,[userType])
     
     return send_result(r)
 
