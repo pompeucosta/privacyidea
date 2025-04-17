@@ -38,7 +38,7 @@ import binascii
 import logging
 import re
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from dateutil.tz import tzutc
 from json import loads, dumps
@@ -55,7 +55,7 @@ from .lib.log import log_with
 from privacyidea.lib.utils import (is_true, convert_column_to_unicode,
                                    hexlify_and_unicode)
 from privacyidea.lib.framework import get_app_config_value
-from privacyidea.lib.error import DatabaseError, ParameterError
+from privacyidea.lib.error import DatabaseError
 
 log = logging.getLogger(__name__)
 
@@ -848,103 +848,6 @@ class CustomUserAttribute(MethodsMixin, db.Model):
             ret = ua.id
         if persistent:
             db.session.commit()
-        return ret
-    
-class IPRiskScore(MethodsMixin,db.Model):
-    PRIVATE = 0
-    PUBLIC = 1
-    
-    __tablename__ = "ipriskscore"
-    id = db.Column(db.Integer(), Sequence("ipriskscore_seq"), primary_key=True)
-    ip_version = db.Column(db.Integer(),default=4,nullable=False)
-    #the type of ip (private or public)
-    ip_type = db.Column(db.Integer(),default=PRIVATE,nullable=False)
-    ip = db.Column(db.Unicode(100), nullable=False)
-    mask = db.Column(db.Integer(),default=32,nullable=False)
-    #the risk score: any negative value to block the ip (blacklist)
-    risk_score = db.Column(db.Integer(), nullable=False)
-    
-    def __init__(self,ip,risk_score,mask=32):
-        self.ip = ip
-        self.risk_score = risk_score
-        self.mask = mask if mask != None else 32
-        self.ip_version,self.ip_type = self.get_ip_version_and_type(ip,self.mask)
-        if self.ip_version == 0:
-            raise ParameterError("invalid ip")
-        
-    def get_ip_version_and_type(self,ip,mask):
-        import ipaddress
-        subnet = "{0!s}/{1!s}".format(ip,mask)
-        try:
-            addr = ipaddress.IPv4Network(subnet)
-            return (4,addr.is_global)
-        except:    
-            try:
-                addr = ipaddress.IPv6Network(subnet)
-                return (6,addr.is_global)
-            except:
-                return (0, None)
-        
-    def save(self):
-        ir = IPRiskScore.query.filter_by(ip=self.ip,mask=self.mask).first()
-        
-        if ir is None:
-            db.session.add(self)
-            db.session.commit()
-            ret = self.id
-        else:
-            IPRiskScore.query.filter_by(ip=self.ip,mask=self.mask).update({"risk_score": self.risk_score})
-            ret = ir.id
-            
-        db.session.commit()
-        return ret
-    
-class ServiceRiskScore(MethodsMixin,db.Model):
-    __tablename__ = "serviceriskscore"
-    id = db.Column(db.Integer(),Sequence("serviceriskscore_seq"),primary_key=True)
-    service_name = db.Column(db.Unicode(100),nullable=False)
-    risk_score = db.Column(db.Integer(),nullable=False)
-    
-    def __init__(self,servicename,risk_score):
-        self.service_name = servicename
-        self.risk_score = risk_score
-        
-    def save(self):
-        sr = ServiceRiskScore.query.filter_by(service_name=self.service_name).first()
-        
-        if sr is None:
-            db.session.add(self)
-            db.session.commit()
-            ret = self.id
-        else:
-            ServiceRiskScore.query.filter_by(service_name=self.service_name).update({"risk_score": self.risk_score})
-            ret = sr.id
-        
-        db.session.commit()
-        return ret
-
-class UserTypeRiskScore(MethodsMixin,db.Model):
-    __tablename__ = "usertyperiskscore"
-    id = db.Column(db.Integer(),Sequence("usertyperiskscore_seq"),primary_key=True)
-    user_type = db.Column(db.Unicode(100),nullable=False)
-    risk_score = db.Column(db.Integer(),nullable=False)
-    
-    def __init__(self,user_type,risk_score):
-        self.user_type = user_type
-        self.risk_score = risk_score
-        
-    def save(self):
-        ur = UserTypeRiskScore.query.filter_by(user_type=self.user_type).first()
-        
-        if ur is None:
-            db.session.add(self)
-            db.session.commit()
-            ret = self.id
-        else:
-            UserTypeRiskScore.query.filter_by(user_type=self.user_type).update({"risk_score":self.risk_score})
-            ret = ur.id
-            
-        db.session.commit()
         return ret
     
 class Admin(db.Model):

@@ -3,8 +3,8 @@ import logging
 from privacyidea.lib.error import ParameterError
 from privacyidea.lib.resolver import get_resolver_object
 from privacyidea.lib.resolvers.LDAPIdResolver import IdResolver
-from privacyidea.models import ServiceRiskScore, IPRiskScore,UserTypeRiskScore
-from privacyidea.lib.config import get_from_config
+from privacyidea.lib.config import get_from_config,set_privacyidea_config
+from re import match
 
 DEFAULT_USER_RISK = 3
 DEFAULT_IP_RISK = 1
@@ -13,6 +13,10 @@ DEFAULT_SERVICE_RISK = 5
 LDAP_USER_GROUP_DN_STR = "ldap_user_group_base_dn"
 LDAP_USER_GROUP_SEARCH_ATTR_STR = "ldap_user_group_search_attr"
 LDAP_GROUP_RESOLVER_NAME_STR = "resolver_name"
+
+CONFIG_GROUPS_RISK_SCORES_KEY = "user_groups_risk_scores"
+CONFIG_SERVICES_RISK_SCORES_KEY = "services_risk_scores"
+CONFIG_IP_RISK_SCORES_KEY = "ip_risk_scores"
 
 
 log = logging.getLogger(__name__) 
@@ -69,8 +73,8 @@ def get_user_groups(user_dn,resolver_name=None,dn=None,attr=None):
     if not resolver:
         return []
 
-    base = dn or get_from_config(LDAP_USER_GROUP_DN_STR) or resolver.basedn
-    search_attr = attr or get_from_config(LDAP_USER_GROUP_SEARCH_ATTR_STR) or "member"
+    base = dn or get_from_config(LDAP_USER_GROUP_DN_STR,default=resolver.basedn)
+    search_attr = attr or get_from_config(LDAP_USER_GROUP_SEARCH_ATTR_STR,default="member")
     search_filter = f"({search_attr}={user_dn})"
     entries = resolver._search(base,search_filter,resolver.loginname_attribute)
     
@@ -89,18 +93,7 @@ def get_user_groups(user_dn,resolver_name=None,dn=None,attr=None):
     log.debug(f"Found groups: {list(groups)}")
     return list(groups)
 
-def _get_group_resolver(resolver_name=None):
-    rname = resolver_name or get_from_config(LDAP_GROUP_RESOLVER_NAME_STR)
-    if not rname:
-        log.info("Name for group resolver not set. User group can not be fetched.")
-        return None
-    
-    resolver: IdResolver = get_resolver_object(rname)
-    
-    if not resolver:
-        log.error("Can not find resolver with name {0!s}!",rname)
-        
-    return resolver
+
 
 def get_ip_risk_score(ip: str):
     """Retrieves the risk score for the IP
@@ -112,21 +105,18 @@ def get_ip_risk_score(ip: str):
         float: the risk score defined for the IP. If the IP does not have a risk score defined, then the subnet with the highest network mask
         to which the IP is part of is returned. If there is no subnet that covers the IP then the default IP risk score is returned.
     """
-    default = get_from_config("DefaultIPRiskScore") or DEFAULT_IP_RISK
+    default = float(get_from_config("DefaultIPRiskScore",default=DEFAULT_IP_RISK))
     
     if not ip:
         return default
     
-    addr = ipaddress.ip_address(ip)
-    version = ip_version(ip)
-    ip_type = IPRiskScore.PUBLIC if addr.is_global else IPRiskScore.PRIVATE
-    subnets = IPRiskScore.query.filter_by(ip_version=version,ip_type=ip_type).all()
+    ips = get_risk_scores(CONFIG_IP_RISK_SCORES_KEY)
+    subnets = [ipaddress.ip_network(ip) for ip,_ in ips]
 
-    if subnets == None:
+    if len(subnets) == 0:
         return default
     
     #get all subnets that hold the ip
-    subnets = [_create_subnet(subnet.ip,subnet.mask) for subnet in subnets]
     subnets = [subn for subn in subnets if _matches_subnet(ip,subn)]
 
     if len(subnets) == 0:
@@ -134,7 +124,7 @@ def get_ip_risk_score(ip: str):
     
     subnet_highest_mask = _get_subnet_with_highest_mask(subnets)
     #fetch the risk score for the subnet
-    ip_risk_score = IPRiskScore.query.filter_by(ip=str(subnet_highest_mask.network_address),mask=subnet_highest_mask.prefixlen).first().risk_score
+    ip_risk_score = get_risk_score(subnet_highest_mask,CONFIG_IP_RISK_SCORES_KEY)
     return ip_risk_score
 
 def get_service_risk_score(service: str):
@@ -147,17 +137,16 @@ def get_service_risk_score(service: str):
         float: the risk score defined for the service. If the service does not have a risk score defined, then
         the default service risk score is returned.
     """
-    default = get_from_config("DefaultServiceRiskScore") or DEFAULT_SERVICE_RISK 
+    default = float(get_from_config("DefaultServiceRiskScore",default= DEFAULT_SERVICE_RISK))
     
     if not service:
         return default
     
-    service_query = ServiceRiskScore.query.filter_by(service_name=service).first()
+    service_risk_score = get_risk_score(service,CONFIG_SERVICES_RISK_SCORES_KEY)
         
-    if service_query == None:
+    if service_risk_score == None:
         return default
     
-    service_risk_score = service_query.risk_score
     return service_risk_score
 
 def get_user_risk_score(ugroups: list):
@@ -169,16 +158,16 @@ def get_user_risk_score(ugroups: list):
     Returns:
         float: the highest risk score from all of the risk scores of the groups 
     """
-    default = get_from_config("DefaultUserRiskScore") or DEFAULT_USER_RISK
+    default = float(get_from_config("DefaultUserRiskScore",default=DEFAULT_USER_RISK))
     
     if not ugroups:
         return default
     
     groups = []
     for t in ugroups:
-        tmp = UserTypeRiskScore.query.filter_by(user_type=t).first()
-        if tmp:
-            groups.append((t,tmp.risk_score)) 
+        score = get_risk_score(t,CONFIG_GROUPS_RISK_SCORES_KEY)
+        if score:
+            groups.append((t,score)) 
             
     if len(groups) == 0:
         log.debug(f"No risk scores found for groups {ugroups}")
@@ -193,8 +182,53 @@ def get_user_risk_score(ugroups: list):
     user_risk_score = scores[-1][1]
         
     return user_risk_score
-       
 
+#possibly cache the result
+def get_risk_score(key: str,config_key: str):
+    groups_str: str = get_from_config(config_key)
+    groups = groups_str.split(",") if groups_str else []
+    if len(groups) == 0:
+        return None
+    
+    exists,i = _check_if_key_exists(key,groups)
+    
+    if not exists:
+        return None
+    
+    mch = match(rf"{key};(\d+(\.\d+)?)",groups[i])
+    score = float(mch.group(1))
+    
+    return score
+
+def get_risk_scores(config_key: str):
+    groups_str: str = get_from_config(config_key)
+    groups = groups_str.split(",") if groups_str else []
+    
+    return [tuple(group.split(";")) for group in groups]
+
+def save_risk_score(key: str,risk_score: str,config_key: str):
+    score = sanitize_risk_score(risk_score)
+    groups_str: str = get_from_config(config_key)
+    groups = groups_str.split(",") if groups_str else []
+    exists,_ = _check_if_key_exists(key,groups)
+    
+    if exists:
+        return ParameterError(f"{key} already has a risk score. Please remove it first.")
+    
+    groups.append(f"{key};{score}")
+    set_privacyidea_config(config_key,",".join(groups),typ="public")
+    
+def remove_risk_score(key: str,config_key: str):
+    groups_str = get_from_config(config_key)
+    groups = groups_str.split(",") if groups_str else []
+    exists,i = _check_if_key_exists(key,groups)
+    
+    if not exists:
+        return ParameterError(f"{key} does not exist")
+    
+    groups.pop(i)
+    set_privacyidea_config(config_key,",".join(groups),typ="public")
+    
 def sanitize_risk_score(risk_score):
     """Checks if the risk score is a positive number.
 
@@ -228,11 +262,30 @@ def ip_version(subnet):
         except:
             return 0
     
+def _get_group_resolver(resolver_name=None):
+    rname = resolver_name or get_from_config(LDAP_GROUP_RESOLVER_NAME_STR)
+    if not rname:
+        log.info("Name for group resolver not set. User group can not be fetched.")
+        return None
+    
+    resolver: IdResolver = get_resolver_object(rname)
+    
+    if not resolver:
+        log.error("Can not find resolver with name {0!s}!",rname)
+        
+    return resolver 
+
+def _check_if_key_exists(key: str,elements: list):
+    for i,element in enumerate(elements):
+        mch = match(rf"{key};(\d+(\.\d+)?)",element)
+        if mch:
+            log.info(f"found match! {mch.groups()}")
+            return True,i
+            
+    return False,None   
+
 def _ip_to_int(ip):
     return int(ipaddress.ip_address(ip))
-
-def _create_subnet(ip,mask):
-    return ipaddress.ip_network(f"{ip}/{mask}")
 
 def _matches_subnet(ip, subnet):
     ip_int = _ip_to_int(ip)

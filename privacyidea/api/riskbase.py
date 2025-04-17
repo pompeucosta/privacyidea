@@ -4,9 +4,8 @@ import logging
 from privacyidea.api.auth import admin_required
 from privacyidea.lib.error import ParameterError
 from privacyidea.api.lib.utils import required,send_result,getParam
-from privacyidea.models import ServiceRiskScore,UserTypeRiskScore,IPRiskScore
 from privacyidea.lib.config import get_from_config, get_token_types,set_privacyidea_config
-from privacyidea.lib.riskbase import LDAP_GROUP_RESOLVER_NAME_STR,LDAP_USER_GROUP_DN_STR,LDAP_USER_GROUP_SEARCH_ATTR_STR, sanitize_risk_score,ip_version,get_user_groups,calculate_risk,get_groups
+from privacyidea.lib.riskbase import LDAP_GROUP_RESOLVER_NAME_STR,LDAP_USER_GROUP_DN_STR,LDAP_USER_GROUP_SEARCH_ATTR_STR,CONFIG_GROUPS_RISK_SCORES_KEY,CONFIG_IP_RISK_SCORES_KEY,CONFIG_SERVICES_RISK_SCORES_KEY,ip_version,get_user_groups,calculate_risk,get_groups,get_risk_scores,save_risk_score,remove_risk_score
 
 log = logging.getLogger(__name__) 
 
@@ -35,9 +34,9 @@ def get_risk_config():
     
     ip_risk - the ips and their defined risk scores 
     """
-    users = UserTypeRiskScore.query.all()
-    services = ServiceRiskScore.query.all()
-    ips = IPRiskScore.query.all()
+    users = get_risk_scores(CONFIG_GROUPS_RISK_SCORES_KEY)
+    services = get_risk_scores(CONFIG_SERVICES_RISK_SCORES_KEY)
+    ips = get_risk_scores(CONFIG_IP_RISK_SCORES_KEY)
 
     r = {}
     
@@ -57,13 +56,13 @@ def get_risk_config():
         r["user_group_attr"] = userGroupAttr
     
     if len(users) > 0:
-        r["user_risk"] = [{"id": entry.id,"type": entry.user_type, "risk_score": entry.risk_score} for entry in users]
+        r["user_risk"] = [{"group": entry[0], "risk_score": entry[1]} for entry in users]
     
     if len(services) > 0:
-        r["service_risk"] = [{"id": entry.id,"name": entry.service_name, "risk_score": entry.risk_score} for entry in services]
+        r["service_risk"] = [{"name": entry[0], "risk_score": entry[1]} for entry in services]
     
     if len(ips) > 0 :
-        r["ip_risk"] = [{"id": entry.id,"ip": f"{entry.ip}/{entry.mask}", "risk_score": entry.risk_score} for entry in ips]
+        r["ip_risk"] = [{"ip": entry[0], "risk_score": entry[1]} for entry in ips]
      
     return send_result(r)
 
@@ -138,7 +137,7 @@ def check():
     service = getParam(params,"service")
     ip = getParam(params,"ip")
     
-    r = calculate_risk(ip,service,userType)
+    r = calculate_risk(ip,service,[userType])
     
     return send_result(r)
 
@@ -155,15 +154,12 @@ def set_user_risk():
     """
     
     param = request.all_data
-    user_type = getParam(param,"user_group",required)
+    user_group = getParam(param,"user_group",required)
     score = getParam(param,"risk_score",required)
     
-    score = sanitize_risk_score(score)
+    save_risk_score(user_group,score,CONFIG_GROUPS_RISK_SCORES_KEY)
     
-    #TODO: check if type exists
-    r = UserTypeRiskScore(user_type,score).save()
-    
-    return send_result(r)
+    return send_result(True)
     
 
 @riskbase_blueprint.route("/service",methods=["POST"])
@@ -179,11 +175,9 @@ def set_service_risk():
     service = getParam(param,"service",required)
     score = getParam(param,"risk_score",required)
     
-    score = sanitize_risk_score(score)
+    save_risk_score(service,score,CONFIG_SERVICES_RISK_SCORES_KEY)
     
-    r = ServiceRiskScore(service,score).save()
-    
-    return send_result(r)
+    return send_result(True)
 
 @riskbase_blueprint.route("/ip",methods=["POST"])
 @admin_required
@@ -200,80 +194,64 @@ def set_ip_risk():
     
     version = ip_version(ip)
     
+    if version == 0:
+        raise ParameterError("Invalid IP address or network")
+
     tmp = ip.split("/")
     mask = None
     if len(tmp) > 1:
-        try:
-            mask = int(tmp[1])
-            ip = tmp[0]
-        except:
-            raise ParameterError("IP mask must be an integer.")
+        mask = int(tmp[1])
+        ip = tmp[0]
     
-    if version == 0:
-        raise ParameterError("Invalid {0!s}".format("IP address" if mask is None else "subnet"))
-
-    risk_score = sanitize_risk_score(risk_score)
-    
-    if mask is None:
+    if not mask:
         mask = 32 if version == 4 else 128
         
-    r = IPRiskScore(ip,mask=mask,risk_score=risk_score).save()
-    
-    return send_result(r)
+    ip = f"{ip}/{mask}"
+    save_risk_score(ip,risk_score,CONFIG_IP_RISK_SCORES_KEY)
 
-@riskbase_blueprint.route("/user/<identifier>",methods=["DELETE"])
+    return send_result(True)
+
+@riskbase_blueprint.route("/user/delete",methods=["POST"])
 @admin_required
-def delete_user_risk(identifier):
+def delete_user_risk():
     """
     Deletes the risk score attached to the user group
     
-    :queryparam identifier: the name of the group
+    :jsonparam identifier: the name of the group
     """
-    identifier = int(identifier)
+    param = request.all_data
+    identifier = getParam(param,"identifier")
     
-    ur = UserTypeRiskScore.query.filter_by(id=identifier).first()
+    remove_risk_score(identifier,CONFIG_GROUPS_RISK_SCORES_KEY)
     
-    if ur == None:
-        raise ParameterError("User risk with the specified identifier does not exist.")
-    
-    r = ur.delete()
-    
-    return send_result(r)
+    return send_result(True)
 
-@riskbase_blueprint.route("/service/<identifier>",methods=["DELETE"])
+@riskbase_blueprint.route("/service/delete",methods=["POST"])
 @admin_required
-def delete_service_risk(identifier):
+def delete_service_risk():
     """
     Deletes the risk score attached to the service
     
-    :queryparam identifier: the name of the service
+    :jsonparam identifier: the name of the service
     """
-    identifier = int(identifier)
+    param = request.all_data
+    identifier = getParam(param,"identifier")
     
-    sr = ServiceRiskScore.query.filter_by(id=identifier).first()
+    remove_risk_score(identifier,CONFIG_SERVICES_RISK_SCORES_KEY)
     
-    if sr == None:
-        raise ParameterError("Service risk with the specified identifier does not exist.")
-    
-    r = sr.delete()
-    
-    return send_result(r)
+    return send_result(True)
 
-@riskbase_blueprint.route("/ip/<identifier>",methods=["DELETE"])
+@riskbase_blueprint.route("/ip/delete",methods=["POST"])
 @admin_required
-def delete_ip_risk(identifier):
+def delete_ip_risk():
     """
     Deletes the risk score attached to the IP or subnet
     
-    :queryparam identifier: the IP or subnet
+    :jsonparam identifier: the IP or subnet
     """
-    identifier = int(identifier)
+    param = request.all_data
+    identifier = getParam(param,"identifier")
     
-    ip = IPRiskScore.query.filter_by(id=identifier).first()
+    remove_risk_score(identifier,CONFIG_IP_RISK_SCORES_KEY)
     
-    if ip == None:
-        raise ParameterError("IP risk with the specified identifier does not exist.")
-    
-    r = ip.delete()
-
-    return send_result(r)
+    return send_result(True)

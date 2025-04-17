@@ -1,13 +1,13 @@
 <form>
     <div class="form-group">
-        <label class="control-label">User type</label>
+        <label class="control-label">User group</label>
         <select class="form-control"
-        ng-options="select for select in $parent.form['user_types']"
+        ng-options="select for select in $parent.form['user_groups']"
         name="userRisk"
         ng-model="$parent.userTest"></select>
     </div>
     <div class="form-group">
-        <label class="control-label">User-Agent</label>
+        <label class="control-label">Service</label>
         <input type="text" class="form-control"
         ng-model="$parent.serviceTest"
         name="serviceRisk" />

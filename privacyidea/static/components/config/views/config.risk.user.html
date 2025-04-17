@@ -2,18 +2,18 @@
     <table class="table table-bordered table-striped">
         <thead>
             <tr>
-                <th>User Type</th>
+                <th>User Group</th>
                 <th>Risk Score</th>
             </tr>
         </thead>
         <tbody>
             <tr ng-repeat="element in form['user_risk']"
                 ng-if="hasDefinedUserRisks()">
-                <td>{{element.type}}</td>
+                <td>{{element.group}}</td>
                 <td>{{element.risk_score}}</td>
                 <td>
                     <button class="btn btn-danger"
-                            ng-click="deleteRisk('user',element.id)">
+                            ng-click="deleteRisk('user',element.group)">
                         Delete
                     </button>
                 </td>

@@ -993,7 +993,9 @@ myApp.factory("ConfigFactory", ["AuthFactory", "$http", "$state", "$rootScope",
                 });
             },
             delRiskScore: function(type,identifier,callback) {
-                $http.delete(riskUrl + "/" + type + "/" + identifier, {
+                $http.post(riskUrl + "/" + type + "/delete",{
+                    "identifier": identifier
+                }, {
                     headers: {
                         'PI-Authorization': AuthFactory.getAuthToken(),
                         'Content-Type': 'application/json'
