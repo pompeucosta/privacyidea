@@ -528,7 +528,6 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
                         !$scope.form["user_risk"].some(risk => risk.type === userType)
                     );
                 }
-                console.log($scope.typesWithoutScore)
             });
         };
 
