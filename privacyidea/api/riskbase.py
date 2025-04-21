@@ -52,7 +52,6 @@ class RiskBaseBlueprint(Blueprint):
         
         ip_risk - the ips and their defined risk scores 
         """
-        print(1)
         users = get_risk_scores(CONFIG_GROUPS_RISK_SCORES_KEY)
         services = get_risk_scores(CONFIG_SERVICES_RISK_SCORES_KEY)
         ips = get_risk_scores(CONFIG_IP_RISK_SCORES_KEY)
