@@ -95,7 +95,7 @@ def group_connection_config():
 @riskbase_blueprint.route("/groups/test",methods=["POST"])
 @admin_required
 def test_fetch_user_group():
-    """
+    """ 
     Tests the group search configuration.
     
     Parameters are the same as the /groups endpoint.
@@ -160,7 +160,10 @@ def set_user_risk():
     
     score = sanitize_risk_score(score)
     
-    #TODO: check if type exists
+    groups = get_groups()
+    if user_type not in groups:
+        raise ParameterError("Group {0!s} does not exist",user_type)
+        
     r = UserTypeRiskScore(user_type,score).save()
     
     return send_result(r)
