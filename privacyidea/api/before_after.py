@@ -61,7 +61,6 @@ from .periodictask import periodictask_blueprint
 from .privacyideaserver import privacyideaserver_blueprint
 from .recover import recover_blueprint
 from .register import register_blueprint
-from .riskbase import riskbase_blueprint
 from .event import eventhandling_blueprint
 from .smsgateway import smsgateway_blueprint
 from .clienttype import client_blueprint
@@ -402,7 +401,6 @@ def before_request():
 @validate_blueprint.after_request
 @register_blueprint.after_request
 @recover_blueprint.after_request
-@riskbase_blueprint.after_request
 @tokengroup_blueprint.after_request
 @serviceid_blueprint.after_request
 @container_blueprint.after_request
@@ -467,7 +465,6 @@ def auth_error(error):
 @eventhandling_blueprint.app_errorhandler(PolicyError)
 @register_blueprint.app_errorhandler(PolicyError)
 @recover_blueprint.app_errorhandler(PolicyError)
-@riskbase_blueprint.app_errorhandler(PolicyError)
 @subscriptions_blueprint.app_errorhandler(PolicyError)
 @monitoring_blueprint.app_errorhandler(PolicyError)
 @ttype_blueprint.app_errorhandler(PolicyError)
@@ -494,7 +491,6 @@ def policy_error(error):
 @eventhandling_blueprint.app_errorhandler(ResourceNotFoundError)
 @register_blueprint.app_errorhandler(ResourceNotFoundError)
 @recover_blueprint.app_errorhandler(ResourceNotFoundError)
-@riskbase_blueprint.app_errorhandler(ResourceNotFoundError)
 @subscriptions_blueprint.app_errorhandler(ResourceNotFoundError)
 @ttype_blueprint.app_errorhandler(ResourceNotFoundError)
 @tokengroup_blueprint.errorhandler(ResourceNotFoundError)
@@ -524,7 +520,6 @@ def resource_not_found_error(error):
 @eventhandling_blueprint.app_errorhandler(privacyIDEAError)
 @register_blueprint.app_errorhandler(privacyIDEAError)
 @recover_blueprint.app_errorhandler(privacyIDEAError)
-@riskbase_blueprint.app_errorhandler(privacyIDEAError)
 @subscriptions_blueprint.app_errorhandler(privacyIDEAError)
 @monitoring_blueprint.app_errorhandler(privacyIDEAError)
 @ttype_blueprint.app_errorhandler(privacyIDEAError)
@@ -555,7 +550,6 @@ def privacyidea_error(error):
 @eventhandling_blueprint.app_errorhandler(NotImplementedError)
 @register_blueprint.app_errorhandler(NotImplementedError)
 @recover_blueprint.app_errorhandler(NotImplementedError)
-@riskbase_blueprint.app_errorhandler(NotImplementedError)
 @subscriptions_blueprint.app_errorhandler(NotImplementedError)
 @monitoring_blueprint.app_errorhandler(NotImplementedError)
 @ttype_blueprint.app_errorhandler(NotImplementedError)
@@ -585,7 +579,6 @@ def not_implemented_error(error):
 @eventhandling_blueprint.app_errorhandler(500)
 @register_blueprint.app_errorhandler(500)
 @recover_blueprint.app_errorhandler(500)
-@riskbase_blueprint.app_errorhandler(500)
 @subscriptions_blueprint.app_errorhandler(500)
 @monitoring_blueprint.app_errorhandler(500)
 @ttype_blueprint.app_errorhandler(500)

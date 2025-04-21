@@ -93,7 +93,6 @@ from privacyidea.api.lib.prepolicy import (prepolicy, set_realm,
 from privacyidea.api.lib.utils import get_all_params, get_optional_one_of
 from privacyidea.api.recover import recover_blueprint
 from privacyidea.api.register import register_blueprint
-from privacyidea.api.riskbase import riskbase_blueprint
 from privacyidea.lib.applications.offline import MachineApplication
 from privacyidea.lib.audit import getAudit
 from privacyidea.lib.challenge import get_challenges, extract_answered_challenges
@@ -132,7 +131,6 @@ validate_blueprint = Blueprint('validate_blueprint', __name__)
 @validate_blueprint.before_request
 @register_blueprint.before_request
 @recover_blueprint.before_request
-@riskbase_blueprint.before_request
 def before_request():
     """
     This is executed before the request
