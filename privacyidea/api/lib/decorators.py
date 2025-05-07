@@ -61,29 +61,31 @@ def add_risk_to_user(request):
                 user = request.User
                 if user:
                     resolver = get_resolver_type(user.resolver)
+                    utype = None
+                    
+                    #groups are only supported on ldap resolvers
                     if resolver == "ldapresolver":
-                        ip: str = request.headers.get("X-Forwarded-For",None)
-                        if not ip:
-                            log.debug("No IP found in headers. Using the IP of the request...")
-                            ip = g.client_ip
-                        else:
-                            ips = ip.split(",")
-                            ip = ips[0]
-                        ip = ip.strip()
-                            
-                        service = request.headers.get("ServiceID",None)
-                        if not service:
-                            log.debug("No service provided. Using the User-Agent...")
-                            service = request.user_agent
-                        
                         utype = get_user_groups(user.uid)
                         if len(utype) == 0:
                             utype = None
-                            
-                        user.info["risk"] = calculate_risk(ip,service,utype)
-                        log.debug(f"Risk for user {str(user.uid)}: {str(user.info.get("risk","null"))}")
+                
+                    ip: str = request.headers.get("X-Forwarded-For",None)
+                    if not ip:
+                        log.debug("No IP found in headers. Using the IP of the request...")
+                        ip = g.client_ip
                     else:
-                        log.warning(f"User {user.login} does not belong to an LDAP resolver. Risk can only be applied to LDAP users.")
+                        ips = ip.split(",")
+                        ip = ips[0]
+                    ip = ip.strip()
+                        
+                    service = request.headers.get("ServiceID",None)
+                    if not service:
+                        log.debug("No service provided. Using the User-Agent...")
+                        service = request.user_agent
+                    
+                    score = int(calculate_risk(ip,service,utype))
+                    user.set_attribute("risk",score)
+                    log.debug(f"Risk for user {str(user.uid)}: {str(user.info.get("risk","null"))}; type={type(user.info.get("risk","null"))}")
                 else:
                     log.debug("User not available on request. Skiping risk score.")
             except Exception as e:

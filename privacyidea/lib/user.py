@@ -334,12 +334,6 @@ class User(object):
         ua = CustomUserAttribute(user_id=self.uid, resolver=self.resolver, realm_id=self.realm_id,
                                  Key=attrkey, Value=attrvalue, Type=attrtype).save()
         return ua
-    
-    # def set_risk_score(self,risk_score):
-    #     ur = UserRiskScore(user_id=self.uid,resolver=self.resolver,realm_id=self.realm_id,
-    #                   risk_score=risk_score).save()
-        
-    #     return ur
 
     @property
     def attributes(self):

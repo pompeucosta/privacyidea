@@ -647,14 +647,11 @@ myApp.controller("riskController", ["$scope", "ConfigFactory",
         $scope.saveResolver = function() {
             if($scope.resolvername) {
                 param = {
-                    "resolver_name": $scope.resolvername
+                    "resolver_name": $scope.resolvername,
+                    "user_to_group_dn": $scope.userGroupDN,
+                    "user_to_group_search_attr": $scope.userGroupAttr
                 }
 
-                if($scope.userGroupDN)
-                    param["user_to_group_dn"] = userGroupDN
-
-                if($scope.userGroupAttr)
-                    param["user_to_group_search_attr"] = $scope.userGroupAttr
 
                 ConfigFactory.saveGroupResolver(param,function(data) {
                     if(data.result.status === true)

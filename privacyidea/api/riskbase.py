@@ -3,8 +3,8 @@ from flask import (Blueprint, request)
 from privacyidea.api.auth import admin_required
 from privacyidea.lib.error import AuthError, ParameterError, PolicyError, ResourceNotFoundError, privacyIDEAError
 from privacyidea.api.lib.utils import required,send_result,getParam
-from privacyidea.lib.config import get_from_config, get_token_types,set_privacyidea_config
-from privacyidea.lib.riskbase import LDAP_GROUP_RESOLVER_NAME_STR,LDAP_USER_GROUP_DN_STR,LDAP_USER_GROUP_SEARCH_ATTR_STR,CONFIG_GROUPS_RISK_SCORES_KEY,CONFIG_IP_RISK_SCORES_KEY,CONFIG_SERVICES_RISK_SCORES_KEY,ip_version,get_user_groups,calculate_risk,get_groups,get_risk_scores,save_risk_score,remove_risk_score
+from privacyidea.lib.config import get_from_config, get_token_types,set_privacyidea_config,delete_privacyidea_config
+from privacyidea.lib.riskbase import LDAP_GROUP_RESOLVER_NAME_STR,LDAP_USER_GROUP_DN_STR,LDAP_USER_GROUP_SEARCH_ATTR_STR,CONFIG_GROUPS_RISK_SCORES_KEY,CONFIG_IP_RISK_SCORES_KEY,CONFIG_SERVICES_RISK_SCORES_KEY,ip_version,get_user_groups,calculate_risk,get_groups,get_risk_scores,save_risk_score,remove_risk_score,test_user_group_fetching_config
 from privacyidea.api.before_after import after_request, auth_error, before_admin_request, internal_error, not_implemented_error, policy_error, privacyidea_error, resource_not_found_error
 
 class RiskBaseBlueprint(Blueprint):
@@ -95,13 +95,26 @@ class RiskBaseBlueprint(Blueprint):
         """
         params = request.all_data
         resolver_name = getParam(params,"resolver_name",required,allow_empty=False)
-        user_to_group_search_attr = getParam(params,"user_to_group_search_attr",allow_empty=False)
-        user_to_group_base_dn = getParam(params,"user_to_group_dn",allow_empty=False)
+        user_to_group_search_attr = getParam(params,"user_to_group_search_attr") 
+        user_to_group_base_dn = getParam(params,"user_to_group_dn")
         
-        parameters = {LDAP_GROUP_RESOLVER_NAME_STR: resolver_name,
-                    LDAP_USER_GROUP_SEARCH_ATTR_STR: user_to_group_search_attr,
-                    LDAP_USER_GROUP_DN_STR: user_to_group_base_dn}
+        parameters = {LDAP_GROUP_RESOLVER_NAME_STR: resolver_name}
         
+        if user_to_group_base_dn:
+            parameters[LDAP_USER_GROUP_DN_STR] = user_to_group_base_dn 
+        else:
+            # check if key exists in the DB before deleting
+            v = get_from_config(LDAP_USER_GROUP_DN_STR)
+            if v:
+                delete_privacyidea_config(LDAP_USER_GROUP_DN_STR)
+
+        if user_to_group_search_attr:
+            parameters[LDAP_USER_GROUP_SEARCH_ATTR_STR] = user_to_group_search_attr
+        else:
+            v = get_from_config(LDAP_USER_GROUP_SEARCH_ATTR_STR)
+            if v:
+                delete_privacyidea_config(LDAP_USER_GROUP_SEARCH_ATTR_STR)
+            
         for key,value in parameters.items():
             set_privacyidea_config(key,value)
             
@@ -124,7 +137,7 @@ class RiskBaseBlueprint(Blueprint):
         attr = getParam(params,"user_to_group_search_attr",allow_empty=False)
         
         try:
-            groups = get_user_groups(user_dn,resolver_name,base_dn,attr)
+            groups = test_user_group_fetching_config(user_dn,resolver_name,base_dn,attr)
             desc = f"Fetched {len(groups)} group(s). Check the browser console for a full list."
         except:
             desc = "Test failed. Check privacyIDEA's logs for more info."

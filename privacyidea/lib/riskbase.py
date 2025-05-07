@@ -57,43 +57,34 @@ def get_groups():
     
     return list(groups)
 
-def get_user_groups(user_dn,resolver_name=None,dn=None,attr=None):
+def test_user_group_fetching_config(user_dn,resolver_name,dn,attr):
+    resolver = _get_group_resolver(resolver_name)
+    if not resolver:
+        return [] 
+    
+    base = dn or resolver.basedn
+    search_attr = attr or "member"
+    groups = _fetch_groups(user_dn,resolver,base,search_attr)
+    return groups
+
+def get_user_groups(user_dn):
     """Retrieves the groups that the user belongs to
 
     Args:
         user_dn (str): the DN of the user
-        resolver_name (str, optional): the name of the base resolver used to fetch groups. Used for testing the group configuration. Defaults to None.
-        dn (str, optional): the base DN used to fetch the groups the user belongs to. Used for testing the group configuration. Defaults to None.
-        attr (str, optional): the search attribute, used in the search filter, that, along with the user DN, is used to fetch the groups of the user. Used for testing the group configuration. Defaults to None.
 
     Returns:
         list: the groups retrieved
     """
-    resolver = _get_group_resolver(resolver_name)
+    resolver = _get_group_resolver()
     if not resolver:
         return []
 
-    base = dn or get_from_config(LDAP_USER_GROUP_DN_STR,default=resolver.basedn)
-    search_attr = attr or get_from_config(LDAP_USER_GROUP_SEARCH_ATTR_STR,default="member")
-    search_filter = f"({search_attr}={user_dn})"
-    entries = resolver._search(base,search_filter,resolver.loginname_attribute)
+    base = get_from_config(LDAP_USER_GROUP_DN_STR,default=resolver.basedn)
+    search_attr = get_from_config(LDAP_USER_GROUP_SEARCH_ATTR_STR,default="member")
     
-    if len(entries) == 0:
-        log.debug(f"Found 0 entries for group search. Base: {base}. Attr: {search_attr}. Filter: {search_filter}")
-        return []
-    
-    groups = set()
-    for entry in entries:
-        attrs = entry.get("attributes", {})
-        for loginname in resolver.loginname_attribute:
-            name = attrs.get(loginname,"")
-            if name:
-                groups.update(name)
-    
-    log.debug(f"Found groups: {list(groups)}")
-    return list(groups)
-
-
+    groups = _fetch_groups(user_dn,resolver,base,search_attr)
+    return groups
 
 def get_ip_risk_score(ip: str):
     """Retrieves the risk score for the IP
@@ -274,6 +265,25 @@ def _get_group_resolver(resolver_name=None):
         log.error("Can not find resolver with name {0!s}!",rname)
         
     return resolver 
+
+def _fetch_groups(user_dn,resolver,base,search_attr):
+    search_filter = f"({search_attr}={user_dn})"
+    entries = resolver._search(base,search_filter,resolver.loginname_attribute)
+    
+    if len(entries) == 0:
+        log.debug(f"Found 0 entries for group search. Base: {base}. Attr: {search_attr}. Filter: {search_filter}")
+        return []
+    
+    groups = set()
+    for entry in entries:
+        attrs = entry.get("attributes", {})
+        for loginname in resolver.loginname_attribute:
+            name = attrs.get(loginname,"")
+            if name:
+                groups.update(name)
+    
+    log.debug(f"Found groups: {list(groups)}")
+    return list(groups)
 
 def _check_if_key_exists(key: str,elements: list):
     for i,element in enumerate(elements):

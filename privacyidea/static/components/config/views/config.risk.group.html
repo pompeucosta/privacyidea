@@ -18,20 +18,26 @@
         <div class="form-group">
             <label for="userGroupDN" class="col-sm-3 control-label"
                     translate>User to group DN</label>
-            <input name="userGroupDN" id="userGroupDN" class="form-control"
-                ng-model="$parent.userGroupDN" placeholder="dc=example,dc=org"/>
+            <div class="col-sm-9">
+                <input name="userGroupDN" id="userGroupDN" class="form-control"
+                        ng-model="$parent.userGroupDN" placeholder="dc=example,dc=org"/>
+            </div>
         </div>
         <div class="form-group">
             <label for="userGroupAttr" class="col-sm-3 control-label"
                     translate>User to group search attribute</label>
-            <input name="userGroupAttr" id="userGroupAttr" class="form-control"
+            <div class="col-sm-9">
+                <input name="userGroupAttr" id="userGroupAttr" class="form-control"
                 ng-model="$parent.userGroupAttr" placeholder="member"/>
+           </div>
         </div>
         <div class="form-group">
             <label for="userDN" class="col-sm-3 control-label"
                     translate>User DN for testing</label>
-            <input name="userDN" id="userDN" class="form-control"
+            <div class="col-sm-9">
+                <input name="userDN" id="userDN" class="form-control"
                 ng-model="$parent.userDN" placeholder="uid=john.doe,ou=people,dc=example,dc=org"/>
+            </div>
         </div>
         <div class="text-center">
             <button ng-click="testGroupResolver()"
