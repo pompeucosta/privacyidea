@@ -52,6 +52,9 @@ To reset your user password please visit the link
 {0!s}/reset/{1!s}@{2!s}/{3!s}
 """
 
+SMS_BODY = """To reset your password, insert the OTP: {0!s}
+"""
+
 
 @log_with(log)
 def create_recoverycode(user, email=None, expiration_seconds=3600,
@@ -117,10 +120,7 @@ def create_sms_recoverycode(user,expiration_seconds=3600):
     
     # you can modify the code through the generate_password arguments
     recoverycode = recoverycode or generate_password(size=6,characters=digits)
-    print(f"recovery code: {recoverycode}")
     hash_code = hash_with_pepper(recoverycode)
-    # send this recoverycode
-    #
     pwreset = PasswordReset(hash_code, username=user.login,
                             realm=user.realm,
                             expiration_seconds=expiration_seconds)
@@ -132,9 +132,8 @@ def create_sms_recoverycode(user,expiration_seconds=3600):
     sms_gateway_identifier = get_from_config("sms.identifier")
     if sms_gateway_identifier:
         sms = create_sms_instance(sms_gateway_identifier)
-        message = f"your reset token {recoverycode}"
         log.debug(f"reset token {recoverycode} sent to {user_phone}")
-        ret = sms.submit_message(user_phone, message)
+        ret = sms.submit_message(user_phone, SMS_BODY.format(recoverycode))
         
         if not ret:
             log.debug("failed to send SMS.")
