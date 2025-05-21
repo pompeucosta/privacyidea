@@ -139,11 +139,9 @@ def create_sms_recoverycode(user,expiration_seconds=3600):
             log.debug("failed to send SMS.")
             raise privacyIDEAError("Failed to send SMS. {0!s}".format(ret))
         else:
-            print(f"sms sent: {ret}")
             log.debug(f"sms with recovery code sent: {ret}")
     else:
         log.debug("no sms gateway identifier found")
-        print("no sms gateway identifier found")
         raise ConfigAdminError("Missing configuration ",
                                "sms.identifier")
         
